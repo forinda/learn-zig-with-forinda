@@ -13,6 +13,8 @@ which rider are you? what's your name? race again? This page is about the three 
 has, how to read what the player types, and the rest of formatted printing. It also ends somewhere important:
 a fixed buffer, and what happens when the player types more than fits. That's what the rest of Part 4 is about.
 
+<img class="lesson-art" src="/art/agama-memory.svg" alt="Agama, the course's lizard, pointing at a terminal that asks Which rider are you, beside a stack of memory blocks" width="400" height="300" />
+
 ## Three streams
 
 Every program starts with three **streams** already open:
