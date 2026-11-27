@@ -1,6 +1,6 @@
 ---
 title: "Functions"
-description: "Parameters, return values, functions that can fail, and printing race times as minutes and seconds."
+description: "Parameters and return values, void and !void, try, pointers to change what's passed in, pub, recursion, and printing times."
 group: "Basics"
 order: 4
 step: 07-functions
@@ -8,19 +8,18 @@ step: 07-functions
 
 # Functions
 
-## Engage
+`finished in 1250 s` is accurate, but nobody says a race took twelve hundred and fifty seconds; they say *twenty
+minutes fifty*. The game needs times the way people read them, in a lot of places: every kilometre, at the finish,
+later on the results. When you need the same work in many places, you write it once, give it a name, and use the
+name: a **function**. You've used them from the start (`main`, `title`, `advance`); this page covers what they can
+do.
 
-`finished in 1250 s` is accurate, but nobody says a race took twelve hundred and fifty seconds. They say *twenty
-minutes fifty*. The game needs to print times the way people read them, in a lot of places: every kilometre, at
-the finish, later on the results.
+## The parts of a function
 
-When you need the same thing in many places, you write it once, give it a name, and use the name: a **function**.
-
-## Explore
-
-You've used functions for a while: `main` from the very first program, then `title()`, `advance(...)` and
-`finished(...)`. Look at `advance` in your
-`src/main.zig`:
+```text
+fn  advance (position_m: f64, speed_mps: f64, dt: f64)  f64  { ... }
+    name     parameters                                 returns
+```
 
 ```zig
 fn advance(position_m: f64, speed_mps: f64, dt: f64) f64 {
@@ -28,39 +27,121 @@ fn advance(position_m: f64, speed_mps: f64, dt: f64) f64 {
 }
 ```
 
-Try adding `position_m = 0;` as the first line inside it, and build. What does the compiler say about changing a
-parameter?
+- **Parameters** are the values it's given, each with its type.
+- The **return type** is what it gives back; `return` hands it to whoever called.
+- A function can be defined after the code that uses it: Zig reads the whole file first.
 
-## Explain
+### Every path must return
 
-A function has a **name**, **parameters** (the values it's given, each with a type), and a **return type** (what it
-gives back):
+A function that promises an `f64` must return one on every path through it:
 
 ```text
-fn  advance (position_m: f64, speed_mps: f64, dt: f64)  f64  { ... }
-    name     parameters                                 returns
+error: function with non-void return type 'f64' implicitly returns
 ```
 
-- Parameters are constants inside the function: you can't change them (that's what the compiler told you).
-- `return` hands a value back to whoever called the function.
-- A function that gives nothing back returns `void`.
-- A function that can *fail* returns `!void` or `!T`: "this, or an error". Writing to the screen can fail, so
-  functions that print return `!void`, and the caller writes `try` in front of them.
+### Using what comes back
 
-Two kinds of function are worth telling apart. Some **compute** (`advance`, `speedFor`): same inputs, same answer,
-nothing else happens. Some **do** things, like printing. The first kind is the easiest to test, which is why the game
-keeps its maths in small functions like those.
+A returned value can't be dropped by accident:
 
-To turn seconds into minutes and seconds, two operators on whole numbers do the work: `/` (how many whole minutes,
-the rest dropped) and `%` (the remainder, what's left over): `1250 / 60` is `20`, `1250 % 60` is `50`.
+```zig
+advance(0, 10, 1); // the result goes nowhere
+```
 
-## Elaborate
+```text
+error: value of type 'f64' ignored
+```
 
-**I do:** `printTime` writes a number of seconds as `m:ss`. It takes the writer to print through as a parameter,
-so the game prints to the screen and the test prints into a buffer it can check. `{d:0>2}` pads the seconds with a
-zero to two digits, so 65 s is `1:05`, not `1:5`:
+Use it, or say you mean to drop it: `_ = advance(0, 10, 1);`.
 
-Below `secondsToFinish`, `printTime`:
+## void and !void
+
+| Return type | Means |
+|---|---|
+| `f64`, `u32`, … | gives back a value of that type |
+| `void` | gives nothing back |
+| `!void` | nothing, or an **error** |
+| `!u32` | a `u32`, or an error |
+
+Functions that write to the screen can fail, so they return `!void`, and whoever calls them puts **`try`** in front:
+if an error comes back, `try` stops here and passes it on to its own caller. Part 3's
+[Errors](/guide/structure/15-errors) page covers errors in full.
+
+## Parameters are constants
+
+Inside a function, its parameters can't be changed:
+
+```zig
+fn halve(laps: u32) u32 {
+    laps = laps / 2; // error: cannot assign to constant
+    return laps;
+}
+```
+
+Compute the new value and return it (`return laps / 2;`), or copy it into a `var` first. This makes functions
+easier to read: what you were given is what you have.
+
+## Changing the caller's value: a pointer
+
+To let a function change something of the caller's, pass its **address** with `&`. The parameter's type is a
+**pointer**, `*f64`, and `.*` reaches the value it points at:
+
+```zig
+fn moveOn(position_m: *f64, speed_mps: f64) void {
+    position_m.* += speed_mps;
+}
+
+var position_m: f64 = 0;
+moveOn(&position_m, 10);
+moveOn(&position_m, 10); // position_m is now 20
+```
+
+Use this sparingly: a function that returns its result is easier to follow and to test than one that changes things
+you have to go and look at. You'll use pointers properly with structs in Part 3.
+
+## pub: who can call it
+
+Functions are private to their file unless marked `pub`. `pub fn main` must be public so Zig can start the
+program; the game's other functions stay private until Part 10 splits the game into several files.
+
+## A function that calls itself
+
+A function can call itself (**recursion**), as long as each call gets closer to a case that stops:
+
+```zig
+fn lapsToCover(distance_m: u32, lap_m: u32) u32 {
+    if (distance_m <= lap_m) return 1;
+    return 1 + lapsToCover(distance_m - lap_m, lap_m);
+}
+```
+
+`lapsToCover(12_500, 4_000)` is 4. Each call uses a little memory until it returns, so a very deep recursion can run
+out; in Zig a loop is usually the better choice, and the game won't need recursion.
+
+## Two kinds of function
+
+Some functions **compute**: same inputs, same answer, nothing else happens (`advance`, `speedFor`). Some **do**
+things: print, change a pointer's value. Computing functions are the easiest to test: call, compare, done. So the
+game keeps its rules in small computing functions and lets `main` do the printing.
+
+## Splitting time: / and %
+
+On whole numbers, `/` gives how many whole times one goes into the other, and `%` what's left over:
+
+```text
+1250 / 60 = 20   (minutes)
+1250 % 60 = 50   (seconds)
+```
+
+::: tip Try it
+Write `fn kph(speed_mps: f64) f64` that turns metres per second into km/h (× 3.6), with a test that `kph(10)` is
+`36`. Then try calling it without using the result.
+:::
+
+## In the game
+
+`printTime` writes a number of seconds as `m:ss`. It takes the writer to print through as a parameter, so the game
+prints to the screen and the test prints into a buffer it can check. `{d:0>2}` pads the seconds with a zero to two
+digits, so 65 s is `1:05`, not `1:5`. Below `secondsToFinish`:
 
 <<< @/code/steps/07-functions/src/main.zig#print-time
 
@@ -72,7 +153,7 @@ Its test, at the end of the file:
 
 <<< @/code/steps/07-functions/src/main.zig#tests
 
-**We do:** make the changes (or copy `code/steps/07-functions`) and run it:
+Run it (or copy `code/steps/07-functions`):
 
 ```sh
 zig build run
@@ -87,10 +168,16 @@ km 12 at 20:00
 finished in 20:50
 ```
 
-<details>
-<summary>The whole <code>src/main.zig</code> after this step</summary>
+Here's everything, the whole `src/main.zig` after this step:
 
 <<< @/code/steps/07-functions/src/main.zig
+
+<details>
+<summary>What changed since the last step, as a diff</summary>
+
+Lines starting with `+` were added, `-` removed. Only for comparing: copy the code above.
+
+<<< @/code/diffs/07-functions.diff
 
 </details>
 
