@@ -82,7 +82,7 @@ zig build run
 +------------------------------+
 | Terminal Tour                |
 |                              |
-| Course:   Ngong Road         |
+| Course:   Compile Pass       |
 | Distance:  12.5 km           |
 | Field:    8 riders           |
 +------------------------------+

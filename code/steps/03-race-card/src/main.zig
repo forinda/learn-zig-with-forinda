@@ -1,7 +1,7 @@
 const std = @import("std");
 
 // The first race. Constants: they never change while the program runs.
-const course_name = "Ngong Road";
+const course_name = "Compile Pass";
 const distance_km: f64 = 12.5;
 const riders: u32 = 8;
 
@@ -42,7 +42,7 @@ test "race card lists the course, distance and riders" {
     var w: std.Io.Writer = .fixed(&buf);
     try raceCard(&w);
     const card = w.buffered();
-    try std.testing.expect(std.mem.indexOf(u8, card, "Ngong Road") != null);
+    try std.testing.expect(std.mem.indexOf(u8, card, "Compile Pass") != null);
     try std.testing.expect(std.mem.indexOf(u8, card, "12.5 km") != null);
     try std.testing.expect(std.mem.indexOf(u8, card, "8 riders") != null);
 }

@@ -13,14 +13,14 @@ Learn to program in Zig from zero by building one game: **Terminal Tour**, a cyc
 You ride, rivals race you, a breakaway goes up the road, the bunch chases, and you sprint for the line.
 
 ```text
- TERMINAL TOUR · Ngong Road · 12.5 km                         km 9.8 / 12.5
+ TERMINAL TOUR · Compile Pass · 12.5 km                       km 9.8 / 12.5
  ──────────────────────────────────────────────────────────────────────────
   Break   3 riders                     ▶▶▶
   Bunch  42 riders   +0:24      ▶▶▶▶▶▶▶▶▶▶▶▶▶▶
   You    in the bunch          ▲
  ──────────────────────────────────────────────────────────────────────────
   Power 285 W  ███████████░░░░   Energy ██████████████░░░   Speed 41 km/h
-  9.6 km  The chase is on: Baraka Energy pull at the front
+  9.6 km  The chase is on: Team Allocator pull at the front
   [↑↓] power  [space] sprint  [s] sit in  [q] quit
 ```
 
