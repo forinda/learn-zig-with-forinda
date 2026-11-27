@@ -1,0 +1,34 @@
+{
+  "name": "forinda-zig-learn",
+  "private": true,
+  "type": "module",
+  "description": "Zero to Hero in Zig: a course that builds a terminal racing game, built with clarusjs.",
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || >=26.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "clarusjs check --strict",
+    "test": "node --test tests/ scripts/",
+    "steps": "node scripts/check-steps.ts",
+    "diffs": "node scripts/diff-steps.ts",
+    "format": "prettier --write \"src/**/*.tscl\"",
+    "format:check": "prettier --check \"src/**/*.tscl\""
+  },
+  "dependencies": {
+    "@clarusjs/theme-docs": "0.5.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "clarusjs": "0.16.0"
+  },
+  "devDependencies": {
+    "@clarusjs/content": "0.5.0",
+    "@clarusjs/prettier-plugin": "0.2.1",
+    "@types/node": "^26.6.6",
+    "prettier": "3.10.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

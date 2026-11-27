@@ -1,0 +1,16 @@
+@import docsLayout from '~/layouts/docs.tscl'
+@import learnProgress from '@clarusjs/theme-docs/learn-progress.tscl'
+@import { theme } from '~/nav.ts'
+{{-- Your progress through the course (the lessons' "leave" goes here): kept in this browser, never sent anywhere. --}}
+
+<docsLayout
+  [title]="'Your progress'"
+  [path]="'/learn/progress'"
+  [description]="'Your XP, lessons, quiz answers and badges, kept in this browser.'"
+>
+  <h1>Your progress</h1>
+  <p class="lead">
+    Lessons you finish, quiz answers and badges are kept in this browser only: no account, nothing sent anywhere.
+  </p>
+  <learnProgress [config]="theme" />
+</docsLayout>

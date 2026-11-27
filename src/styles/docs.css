@@ -1,0 +1,46 @@
+/* The course's look: Zig's orange as the accent in light and dark, Geist for text, Geist Mono for headings and
+   code. theme-docs reads these variables; the three selectors match its own light/dark switch. */
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+:root {
+  --sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --accent: #c76d00;
+  --accent-soft: rgba(247, 164, 29, 0.12);
+  --line-highlight: rgba(247, 164, 29, 0.1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --accent: #f7a41d;
+    --accent-soft: rgba(247, 164, 29, 0.14);
+    --line-highlight: rgba(247, 164, 29, 0.14);
+  }
+}
+:root[data-theme='dark'] {
+  --accent: #f7a41d;
+  --accent-soft: rgba(247, 164, 29, 0.14);
+  --line-highlight: rgba(247, 164, 29, 0.14);
+}
+
+/* Diagrams rendered by public/diagrams.js: centred, never wider than the column, on a light card (mermaid's
+   neutral theme draws dark lines) that stays readable in dark mode. */
+figure.diagram {
+  margin: 1.5rem 0;
+  padding: 16px;
+  text-align: center;
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--rule, #e5e7eb);
+  border-radius: 12px;
+}
+figure.diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+h1, h2, h3, h4,
+.site-header .brand {
+  font-family: var(--mono);
+  letter-spacing: -0.02em;
+}
