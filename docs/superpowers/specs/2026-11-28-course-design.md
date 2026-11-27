@@ -182,3 +182,14 @@ test.
   all 13 parts, built properly rather than a thin first slice. Built in part order (each part depends on
   the game from the parts before it), one PR per part so each gets a review; the site and tooling land with
   Part 1.
+
+## Decided (Felix, 2026-11-28): teach in the Guide, check in the Course
+
+The teaching moves to a **Guide** section of ordinary docs pages (code inline in the text column, more room):
+one page per concept, grouped by the 13 parts, with Engage, Explore, Explain and Elaborate as its `##`
+sections, its `step`, and a "Check your understanding →" link to its lesson. The **Course** lessons (lesson
+layout, one step at a time, XP) test understanding instead of re-teaching: "Read first" links to the guide
+page, then `##` steps up Bloom's levels: **Recall** (quick quizzes), **Predict** (what a short snippet prints
+or which error it gives), **Fix it** (choose the fix for a broken snippet), **Build it** (the step's
+exercise, `zig build test`), and **Stretch** (the part's create task, in a part's last lesson). Page rules
+enforce both shapes. Parts 1 and 2 are reworked to it; later parts follow it.
