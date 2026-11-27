@@ -223,8 +223,8 @@ Content per lesson, in the 5E steps (each concept also shown as output text and,
 - [ ] Whole-branch review (opus); fix Important findings with TDD.
 - [ ] The repo has no remote yet: ask Felix to create it (or approve creating `forinda/forinda-zig-learn`) before pushing; then PR with rulings and deferred minors.
 
-## Open item for Felix
+## Syntax highlighting
 
-Syntax highlighting: `@clarusjs/content` 0.5.0 bundles 12 languages and not Zig or C, so Zig code renders
-as plain text. Fix belongs in kview (add `shiki/langs/zig.mjs` and `c.mjs` to packages/content's highlighter,
-release, bump here). Until then lessons are readable but unhighlighted.
+`@clarusjs/content` 0.5.0 doesn't highlight Zig or C. Felix is adding Zig upstream (kview packages/content);
+until that release, Zig code renders as plain text. When it ships: bump `@clarusjs/content` here and
+check one lesson's Zig block is highlighted (C too, if it lands, for Part 11).
