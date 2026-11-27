@@ -63,12 +63,26 @@ The three you just met are the ones you'll see most:
 ## Elaborate
 
 Now the game gets its first real screen: a **race card** for the first race. **I do:** three facts about the
-race become constants (values that never change), and a new function, `raceCard`, prints them in a box. Here's the
-change:
+race become constants (values that never change), and a new function, `raceCard`, prints them in a box. Here's the new code, piece by piece, and where
+each goes.
 
-<<< @/code/diffs/03-race-card.diff
+At the top, under the `std` import, the race:
 
-**We do:** make the change in your project (or copy `code/steps/03-race-card`), then run it:
+<<< @/code/steps/03-race-card/src/main.zig#race
+
+Below `title()`, the race card:
+
+<<< @/code/steps/03-race-card/src/main.zig#card
+
+In `main`, print the card instead of the title:
+
+<<< @/code/steps/03-race-card/src/main.zig#main
+
+And its test, at the end of the file:
+
+<<< @/code/steps/03-race-card/src/main.zig#test
+
+**We do:** make the changes in your project (or copy `code/steps/03-race-card`), then run it:
 
 ```sh
 zig build run
@@ -90,6 +104,12 @@ zig build run
 Notice the test: it doesn't print to the screen. It prints the card into a fixed buffer and checks the buffer
 holds the course, the distance and the field.
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/03-race-card/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/start/03-reading-compiler-errors) Quizzes on what you just read, a snippet to predict, a bug to fix, and

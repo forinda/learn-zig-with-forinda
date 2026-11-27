@@ -61,11 +61,25 @@ last column instead of off the end of the road.
 **I do:** `drawRoad` fills a buffer with dashes and puts each rider's letter in its column. Riders close together land
 in the same column, and the last letter written there is the one you see. So it writes the rest of the field first,
 then you (rider A), then the leader: the leader always shows, and so do you, unless you're in the leader's column.
-Here's the change:
+Here's the new code, piece by piece, and where each goes.
 
-<<< @/code/diffs/09-text-road.diff
+Below `riderName`, `drawRoad` and the column it puts a rider in:
 
-**We do:** make the change (or copy `code/steps/09-text-road`) and run it:
+<<< @/code/steps/09-text-road/src/main.zig#road
+
+In `main`, before the loop, room for the road:
+
+<<< @/code/steps/09-text-road/src/main.zig#road-var
+
+and in the loop, under the leader line, print it:
+
+<<< @/code/steps/09-text-road/src/main.zig#print-road
+
+Its tests, at the end of the file:
+
+<<< @/code/steps/09-text-road/src/main.zig#tests
+
+**We do:** make the changes (or copy `code/steps/09-text-road`) and run it:
 
 ```sh
 zig build run
@@ -87,6 +101,12 @@ B wins in 20:02
 Watch the field spread out: at the start everyone shares the leader's column, and by the end you can pick out
 several riders behind B (riders still sharing a column hide each other).
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/09-text-road/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/basics/09-text-on-the-road) Quizzes on what you just read, a snippet to predict, a bug to fix, and

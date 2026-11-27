@@ -7,8 +7,10 @@ const riders: u32 = 8;
 
 // Each rider's speed on a flat road, in metres per second: rider A is the first, H the last.
 const field_speeds_mps = [_]f64{ 10.0, 10.4, 9.8, 10.1, 9.6, 10.2, 9.9, 10.3 };
+// #region speeds
 // ...and on a climb: the strongest climbers aren't the fastest on the flat (E climbs best, B worst).
 const field_climb_mps = [_]f64{ 6.2, 5.6, 6.4, 6.0, 6.8, 5.8, 6.3, 5.9 };
+// #endregion speeds
 
 // How far the race moves on each tick of the clock, in seconds.
 const dt_s: f64 = 1.0;
@@ -25,6 +27,7 @@ const Rider = struct {
         self.position_m = advance_m(self.position_m, self.speed_mps, dt);
     }
 
+    // #region speed-on
     /// This rider's speed on `terrain`: a switch picks one for each kind.
     fn speedOn(self: Rider, terrain: Terrain) f64 {
         return switch (terrain) {
@@ -33,6 +36,7 @@ const Rider = struct {
             .descent => self.speed_mps * 1.4,
         };
     }
+    // #endregion speed-on
 
     /// Has this rider crossed the line? It only reads the rider, so it takes a `Rider`.
     fn finished(self: Rider, distance_m: f64) bool {
@@ -101,6 +105,7 @@ fn finished(position_m: f64, distance_m: f64) bool {
     return position_m >= distance_m;
 }
 
+// #region terrain
 /// The kinds of road: one name for each, instead of remembering what a gradient means.
 const Terrain = enum {
     flat,
@@ -123,6 +128,7 @@ fn speedFor(terrain: Terrain) f64 {
         .descent => 14.0,
     };
 }
+// #endregion terrain
 
 /// How many whole seconds a rider at `speed_mps` needs to cover `distance_m` (a part-second counts).
 fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
@@ -142,6 +148,7 @@ fn printTime(w: *std.Io.Writer, seconds: u32) !void {
     try w.print("{d}:{d:0>2}", .{ minutes, rest });
 }
 
+// #region course
 /// A stretch of road: where it starts and how steep it is, until the next one starts.
 const Segment = struct {
     start_m: f64,
@@ -174,6 +181,7 @@ const compile_pass: Course = .{
         .{ .start_m = 8000, .gradient_pct = 0 },
     },
 };
+// #endregion course
 
 /// A race: a course, eight riders and a clock. Everything the race loop needs, in one value.
 const Race = struct {
@@ -193,6 +201,7 @@ const Race = struct {
         return race;
     }
 
+    // #region step
     /// One tick of the clock: everyone moves on at its own speed for the terrain under its wheels.
     fn step(self: *Race) void {
         for (&self.riders) |*rider| {
@@ -201,6 +210,7 @@ const Race = struct {
         }
         self.clock_s += 1;
     }
+    // #endregion step
 
     /// Which rider is furthest along.
     fn leader(self: *const Race) usize {
@@ -409,6 +419,7 @@ test "riders without speeds of their own ride at 10 m/s, and climb at 6" {
     try std.testing.expectEqual(@as(f64, 6), race.riders[7].climb_mps);
 }
 
+// #region tests
 test "gradients map to terrain" {
     try std.testing.expectEqual(Terrain.descent, Terrain.of(-5));
     try std.testing.expectEqual(Terrain.flat, Terrain.of(0));
@@ -429,3 +440,4 @@ test "each rider climbs at its own speed" {
     try std.testing.expectEqual(@as(f64, 6.8), rider.speedOn(.climb));
     try std.testing.expectApproxEqAbs(@as(f64, 13.44), rider.speedOn(.descent), 1e-9);
 }
+// #endregion tests

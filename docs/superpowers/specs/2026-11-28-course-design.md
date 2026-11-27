@@ -193,3 +193,10 @@ page, then `##` steps up Bloom's levels: **Recall** (quick quizzes), **Predict**
 or which error it gives), **Fix it** (choose the fix for a broken snippet), **Build it** (the step's
 exercise, `zig build test`), and **Stretch** (the part's create task, in a part's last lesson). Page rules
 enforce both shapes. Parts 1 and 2 are reworked to it; later parts follow it.
+
+## Decided (Felix, 2026-11-28): copyable code, not diffs
+
+Diffs confuse readers and can't be pasted into a file. A guide page's Elaborate shows each new piece as plain,
+copyable code from a named region of its step's source (`<<< @/code/steps/NN-*/src/main.zig#name`, regions
+marked `// #region name` … `// #endregion name`), with where it goes, and ends with the whole file after the
+step in a collapsed section. `code/diffs/` and its CI check are removed; `scripts/carry.ts` stays.

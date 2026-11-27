@@ -41,6 +41,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(5)});
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(-5)});
 
+    // #region main
     // The race is one value now: a course, the riders and the clock, with the loop asking it what to do.
     var race = Race.init(compile_pass, &field_speeds_mps);
     var next_km_m: f64 = 1000;
@@ -58,6 +59,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("{c} wins in ", .{race.riders[race.leader()].name});
     try printTime(out, race.clock_s);
     try out.print("\n", .{});
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -118,6 +120,7 @@ fn printTime(w: *std.Io.Writer, seconds: u32) !void {
     try w.print("{d}:{d:0>2}", .{ minutes, rest });
 }
 
+// #region race
 /// A course: its name and how long it is.
 const Course = struct {
     name: []const u8,
@@ -158,6 +161,7 @@ const Race = struct {
         return self.riders[self.leader()].finished(self.course.distance_m);
     }
 };
+// #endregion race
 
 /// Moves every rider on by `dt` seconds, each at its own speed. `field` is a slice it can change.
 fn advanceAll(field: []Rider, dt: f64) void {
@@ -324,6 +328,7 @@ test "a new rider starts at the line" {
     try std.testing.expect(!rider.finished(12_500));
 }
 
+// #region tests
 const test_course: Course = .{ .name = "Test Loop", .distance_m = 100 };
 
 test "a new race has everyone at the start" {
@@ -353,3 +358,4 @@ test "riders without a speed of their own ride at 10 m/s" {
     try std.testing.expectEqual(@as(f64, 12), race.riders[0].speed_mps);
     try std.testing.expectEqual(@as(f64, 10), race.riders[7].speed_mps);
 }
+// #endregion tests

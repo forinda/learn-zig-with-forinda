@@ -60,14 +60,21 @@ If the check fails, the test fails, and `zig build test` tells you which one and
 ## Elaborate
 
 **I do:** the game's name is going to be used in more than one place (the screen and the test), so it moves into
-a function, `title()`, that returns it. Here is what changes from the last step:
+a function, `title()`, that returns it. Here's the new code, piece by piece, and where each goes.
 
-<<< @/code/diffs/02-first-test.diff
+Add `title()` below `main`:
 
-**We do:** make the same change in your project (or copy `code/steps/02-first-test`). Your `src/main.zig` should
-now be:
+<<< @/code/steps/02-first-test/src/main.zig#title
 
-<<< @/code/steps/02-first-test/src/main.zig
+In `main`, print it instead of the fixed text:
+
+<<< @/code/steps/02-first-test/src/main.zig#print
+
+And its test, at the end of the file:
+
+<<< @/code/steps/02-first-test/src/main.zig#test
+
+**We do:** make the same changes in your project (or copy `code/steps/02-first-test`).
 
 Run the test:
 
@@ -85,6 +92,12 @@ last result instead of running the tests again. Change the code and they run aga
 Now break it on purpose: change `"Terminal Tour"` in `title()` to `"Terminal Tor"` and run the test again. Read
 what it says: what it expected, and what it found. Put the name back.
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/02-first-test/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/start/02-build-run-test) Quizzes on what you just read, a snippet to predict, a bug to fix, and

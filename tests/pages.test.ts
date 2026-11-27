@@ -36,7 +36,7 @@ test('guide pages and lessons are ordered 1..n within each part; each part ends 
 
 test('the rules catch a broken guide page', () => {
   const problems = guideProblems(BROKEN_GUIDE, STEPS, PAGES).join('\n')
-  for (const rule of ['folder:', 'sections:', 'step:', 'lesson:']) assert.ok(problems.includes(rule), `expected "${rule}" in:\n${problems}`)
+  for (const rule of ['folder:', 'sections:', 'step:', 'lesson:', 'code: Elaborate includes no code']) assert.ok(problems.includes(rule), `expected "${rule}" in:\n${problems}`)
 })
 
 test('the rules catch a broken lesson', () => {

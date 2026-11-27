@@ -21,6 +21,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(5)});
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(-5)});
 
+    // #region loop
     // One rider on a flat road, second by second until the line: a loop does the repeating.
     const distance_m = distance_km * 1000;
     const speed_mps = speedFor(0);
@@ -40,6 +41,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("finished in ", .{});
     try printTime(out, seconds);
     try out.print("\n", .{});
+    // #endregion loop
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -93,12 +95,14 @@ fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
     return seconds;
 }
 
+// #region print-time
 /// Prints `seconds` as minutes and seconds, like 1:40. It writes through `w`, so a test can read what it wrote.
 fn printTime(w: *std.Io.Writer, seconds: u32) !void {
     const minutes = seconds / 60; // whole minutes: integer division drops the rest
     const rest = seconds % 60; // what's left over
     try w.print("{d}:{d:0>2}", .{ minutes, rest });
 }
+// #endregion print-time
 
 test "the game has a title" {
     try std.testing.expectEqualStrings("Terminal Tour", title());
@@ -142,6 +146,7 @@ test "a part-second still counts as a second" {
     try std.testing.expectEqual(@as(u32, 4), secondsToFinish(100, 30));
 }
 
+// #region tests
 test "times print as minutes and seconds" {
     var buf: [32]u8 = undefined;
     var w: std.Io.Writer = .fixed(&buf);
@@ -154,3 +159,4 @@ test "times print as minutes and seconds" {
     try printTime(&w, 3605);
     try std.testing.expectEqualStrings("60:05", w.buffered());
 }
+// #endregion tests

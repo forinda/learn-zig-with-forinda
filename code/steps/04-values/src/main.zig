@@ -5,8 +5,10 @@ const course_name = "Compile Pass";
 const distance_km: f64 = 12.5;
 const riders: u32 = 8;
 
+// #region dt
 // How far the race moves on each tick of the clock, in seconds.
 const dt_s: f64 = 1.0;
+// #endregion dt
 
 pub fn main(init: std.process.Init) !void {
     // Text goes to the terminal through a writer. It collects text in a buffer...
@@ -16,6 +18,7 @@ pub fn main(init: std.process.Init) !void {
 
     try raceCard(out);
 
+    // #region main
     // One rider. Its speed never changes, so it's a constant; its position does, so it's a variable.
     const speed_mps: f64 = 10.0;
     var position_m: f64 = 0;
@@ -25,6 +28,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("after 2 s: {d:.1} m\n", .{position_m});
     position_m = advance(position_m, speed_mps, dt_s);
     try out.print("after 3 s: {d:.1} m\n", .{position_m});
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -46,10 +50,12 @@ fn raceCard(w: *std.Io.Writer) !void {
     try w.print("+------------------------------+\n", .{});
 }
 
+// #region advance
 /// Where a rider is after `dt` seconds more at `speed_mps`.
 fn advance(position_m: f64, speed_mps: f64, dt: f64) f64 {
     return position_m + speed_mps * dt;
 }
+// #endregion advance
 
 test "the game has a title" {
     try std.testing.expectEqualStrings("Terminal Tour", title());
@@ -65,6 +71,7 @@ test "race card lists the course, distance and riders" {
     try std.testing.expect(std.mem.indexOf(u8, card, "8 riders") != null);
 }
 
+// #region tests
 test "a rider at 10 m/s covers 10 m in a second" {
     try std.testing.expectEqual(@as(f64, 10), advance(0, 10, 1));
 }
@@ -72,3 +79,4 @@ test "a rider at 10 m/s covers 10 m in a second" {
 test "advance adds to where the rider already is" {
     try std.testing.expectEqual(@as(f64, 125), advance(100, 12.5, 2));
 }
+// #endregion tests

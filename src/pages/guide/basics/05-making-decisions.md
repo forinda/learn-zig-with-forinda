@@ -65,11 +65,23 @@ const label = if (finished) "done" else "riding";
 ## Elaborate
 
 **I do:** two decisions join the game. `finished` answers "has this rider crossed the line?", and `speedFor` picks a
-speed from the road's gradient. Here's the change:
+speed from the road's gradient. Here's the new code, piece by piece, and where each goes.
 
-<<< @/code/diffs/05-decisions.diff
+Below `advance`, the two decisions:
 
-**We do:** make the change (or copy `code/steps/05-decisions`) and run it:
+<<< @/code/steps/05-decisions/src/main.zig#finished
+
+<<< @/code/steps/05-decisions/src/main.zig#speed
+
+In `main`, after the rider moves, print the three speeds:
+
+<<< @/code/steps/05-decisions/src/main.zig#main
+
+Their tests, at the end of the file:
+
+<<< @/code/steps/05-decisions/src/main.zig#tests
+
+**We do:** make the changes (or copy `code/steps/05-decisions`) and run it:
 
 ```sh
 zig build run
@@ -86,6 +98,12 @@ flat road:  10 m/s
 Look at the tests: one checks a rider *exactly on* the line has finished (that's why it's `>=`, not `>`), and one
 checks `speedFor(3)` is still flat. Edges like these are where bugs hide, so test them.
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/05-decisions/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/basics/05-making-decisions) Quizzes on what you just read, a snippet to predict, a bug to fix, and

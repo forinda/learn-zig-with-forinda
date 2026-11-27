@@ -66,6 +66,10 @@ export function guideProblems(file: string, stepsDir: string, pagesDir: string):
   const problems = common(file, fm, b, stepsDir)
   const h = h2s(b)
   if (h.join('|') !== GUIDE_STEPS.join('|')) problems.push(`sections: [${h.join(', ')}], expected [${GUIDE_STEPS.join(', ')}]`)
+  // Elaborate shows copyable code from this page's own step (regions or the whole file), never a diff.
+  const elaborate = section(b, 'Elaborate')
+  if (fm.step && !elaborate.includes(`<<< @/code/steps/${fm.step}/`)) problems.push(`code: Elaborate includes no code from code/steps/${fm.step}/`)
+  if (/code\/diffs\//.test(b)) problems.push('code: a diff (code/diffs/) on the page; show copyable code from the step instead')
   const lessons = linkedPages(b, 'learn', pagesDir)
   const own = `/learn/${basename(dirname(file))}/${basename(file, '.md')}`
   if (!lessons.length) problems.push('lesson: no link to its lesson (/learn/...)')

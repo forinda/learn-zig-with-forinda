@@ -11,6 +11,7 @@ const field_speeds_mps = [_]f64{ 10.0, 10.4, 9.8, 10.1, 9.6, 10.2, 9.9, 10.3 };
 // How far the race moves on each tick of the clock, in seconds.
 const dt_s: f64 = 1.0;
 
+// #region rider
 /// One rider: everything about it in one place, instead of spread over parallel arrays.
 const Rider = struct {
     name: u8, // its letter, A to H
@@ -27,6 +28,7 @@ const Rider = struct {
         return self.position_m >= distance_m;
     }
 };
+// #endregion rider
 
 pub fn main(init: std.process.Init) !void {
     // Text goes to the terminal through a writer. It collects text in a buffer...
@@ -41,6 +43,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(5)});
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(-5)});
 
+    // #region main
     // Eight riders, A to H: one array of riders, each one knowing its own name, speed and position.
     const distance_m = distance_km * 1000;
     var field: [field_speeds_mps.len]Rider = undefined;
@@ -64,6 +67,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("{c} wins in ", .{field[leader(&field)].name});
     try printTime(out, seconds);
     try out.print("\n", .{});
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -124,6 +128,7 @@ fn printTime(w: *std.Io.Writer, seconds: u32) !void {
     try w.print("{d}:{d:0>2}", .{ minutes, rest });
 }
 
+// #region field
 /// Moves every rider on by `dt` seconds, each at its own speed. `field` is a slice it can change.
 fn advanceAll(field: []Rider, dt: f64) void {
     for (field) |*rider| rider.advance(dt);
@@ -137,12 +142,14 @@ fn leader(field: []const Rider) usize {
     }
     return best;
 }
+// #endregion field
 
 /// A rider's letter: 0 is A, 1 is B, and so on.
 fn riderName(i: usize) u8 {
     return 'A' + @as(u8, @intCast(i));
 }
 
+// #region draw
 /// Draws the road into `buf`: dashes, with each rider's letter where it is along the course. Returns the line.
 fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64) []const u8 {
     @memset(buf, '-');
@@ -158,6 +165,7 @@ fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64) []const u8 {
     buf[columnOf(field[first].position_m, distance_m, last)] = field[first].name;
     return buf;
 }
+// #endregion draw
 
 /// The column (0 to `last`) for a rider at `position_m` of `distance_m`.
 fn columnOf(position_m: f64, distance_m: f64, last: f64) usize {
@@ -220,6 +228,7 @@ test "times print as minutes and seconds" {
     try std.testing.expectEqualStrings("60:05", w.buffered());
 }
 
+// #region helper
 /// Test helper: riders named A, B, ... at these positions (in `buf`).
 fn ridersAt(buf: []Rider, positions_m: []const f64) []Rider {
     for (buf[0..positions_m.len], positions_m, 0..) |*rider, position_m, i| {
@@ -276,7 +285,9 @@ test "the player (rider A) shows when the leader is elsewhere" {
     const line = drawRoad(&road, ridersAt(&buf, &.{ 10, 10.5, 90 }), 100); // A and B share column 0; C leads
     try std.testing.expectEqual(@as(u8, 'A'), line[0]);
 }
+// #endregion helper
 
+// #region tests
 test "a rider moves at its own speed" {
     var rider: Rider = .{ .name = 'A', .speed_mps = 10.4 };
     rider.advance(1);
@@ -288,3 +299,4 @@ test "a new rider starts at the line" {
     try std.testing.expectEqual(@as(f64, 0), rider.position_m);
     try std.testing.expect(!rider.finished(12_500));
 }
+// #endregion tests

@@ -99,11 +99,25 @@ You say which you mean: `@divTrunc(gradient_pct, 2)` drops the rest towards zero
 ## Elaborate
 
 **I do:** the race gets a clock tick, `dt_s` (one second), and a function, `advance`, that works out where a rider
-is after one more tick: its position plus its speed times the time. Here's the change:
+is after one more tick: its position plus its speed times the time. Here's the new code, piece by piece, and where each goes.
 
-<<< @/code/diffs/04-values.diff
+Under the race constants, the clock tick:
 
-**We do:** make the change in your project (or copy `code/steps/04-values`), then run it:
+<<< @/code/steps/04-values/src/main.zig#dt
+
+Below `raceCard`, `advance`:
+
+<<< @/code/steps/04-values/src/main.zig#advance
+
+In `main`, after the race card, move one rider:
+
+<<< @/code/steps/04-values/src/main.zig#main
+
+Its tests, at the end of the file:
+
+<<< @/code/steps/04-values/src/main.zig#tests
+
+**We do:** make the changes in your project (or copy `code/steps/04-values`), then run it:
 
 ```sh
 zig build run
@@ -120,6 +134,12 @@ after 3 s: 30.0 m
 `{d:.1}` prints a number with one decimal place. `speed_mps` is a `const` (it never changes), `position_m` is a
 `var` (it moves).
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/04-values/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/basics/04-values-and-types) Quizzes on what you just read, a snippet to predict, a bug to fix, and

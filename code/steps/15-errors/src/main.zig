@@ -54,10 +54,12 @@ pub fn main(init: std.process.Init) !void {
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(Terrain.of(-5))});
 
     // The race is one value: the loop steps it and prints what it says happened.
+    // #region main
     // The course comes from text now. Reading it can fail, so `try`: if the text is wrong, main stops with the error.
     var segments: [16]Segment = undefined;
     const course = try parseCourse(course_name, compile_pass_text, &segments);
     var race = Race.init(course, &field_speeds_mps, &field_climb_mps);
+    // #endregion main
     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
     var events: [16]Event = undefined;
     while (!race.done()) {
@@ -188,6 +190,7 @@ const compile_pass: Course = .{
     },
 };
 
+// #region text
 /// Compile Pass as text, one segment a line: the terrain, its length in metres, and (for climbs and
 /// descents) its gradient in percent. A multiline string: each line starts with `\\`.
 const compile_pass_text =
@@ -196,7 +199,9 @@ const compile_pass_text =
     \\descent 2000 -6
     \\flat 4500
 ;
+// #endregion text
 
+// #region parse
 /// Everything that can be wrong with a course's text: an error set.
 const ParseError = error{ UnknownTerrain, MissingNumber, BadNumber, TooManySegments };
 
@@ -228,6 +233,7 @@ fn number(word: ?[]const u8) ParseError!f64 {
     const w = word orelse return error.MissingNumber;
     return std.fmt.parseFloat(f64, w) catch error.BadNumber; // the library's own error becomes ours
 }
+// #endregion parse
 
 /// Something that happened in the race. One value, one of several kinds, each with its own data:
 /// a tagged union. A `switch` on it says what to do with each kind.
@@ -578,6 +584,7 @@ test "a known name finds that rider" {
     try std.testing.expectEqual(@as(f64, 9), rider.speed_mps);
 }
 
+// #region tests
 test "Compile Pass parses into four segments" {
     var buf: [8]Segment = undefined;
     const course = try parseCourse("Compile Pass", compile_pass_text, &buf);
@@ -608,3 +615,4 @@ test "too many segments for the buffer is an error" {
     var buf: [1]Segment = undefined;
     try std.testing.expectError(error.TooManySegments, parseCourse("x", "flat 10\nflat 10", &buf));
 }
+// #endregion tests

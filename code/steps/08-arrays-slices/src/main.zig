@@ -5,8 +5,10 @@ const course_name = "Compile Pass";
 const distance_km: f64 = 12.5;
 const riders: u32 = 8;
 
+// #region speeds
 // Each rider's speed on a flat road, in metres per second: rider A is the first, H the last.
 const field_speeds_mps = [_]f64{ 10.0, 10.4, 9.8, 10.1, 9.6, 10.2, 9.9, 10.3 };
+// #endregion speeds
 
 // How far the race moves on each tick of the clock, in seconds.
 const dt_s: f64 = 1.0;
@@ -24,6 +26,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(5)});
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(-5)});
 
+    // #region main
     // Eight riders, A to H, each with its own speed: one array of speeds, one of positions.
     const distance_m = distance_km * 1000;
     var positions_m: [field_speeds_mps.len]f64 = @splat(0); // one position per rider, all at the start
@@ -42,6 +45,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("{c} wins in ", .{riderName(leader(&positions_m))});
     try printTime(out, seconds);
     try out.print("\n", .{});
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -102,6 +106,7 @@ fn printTime(w: *std.Io.Writer, seconds: u32) !void {
     try w.print("{d}:{d:0>2}", .{ minutes, rest });
 }
 
+// #region field
 /// Moves every rider on by `dt` seconds at its own speed. `positions_m` is a slice it can change.
 fn advanceAll(positions_m: []f64, speeds_mps: []const f64, dt: f64) void {
     for (positions_m, speeds_mps) |*position_m, speed_mps| {
@@ -122,6 +127,7 @@ fn leader(positions_m: []const f64) usize {
 fn riderName(i: usize) u8 {
     return 'A' + @as(u8, @intCast(i));
 }
+// #endregion field
 
 test "the game has a title" {
     try std.testing.expectEqualStrings("Terminal Tour", title());
@@ -178,6 +184,7 @@ test "times print as minutes and seconds" {
     try std.testing.expectEqualStrings("60:05", w.buffered());
 }
 
+// #region tests
 test "everyone moves at their own speed" {
     var positions = [_]f64{ 0, 0 };
     const speeds = [_]f64{ 10, 12 };
@@ -188,3 +195,4 @@ test "everyone moves at their own speed" {
 test "the leader is the furthest along" {
     try std.testing.expectEqual(@as(usize, 1), leader(&.{ 3, 9, 4 }));
 }
+// #endregion tests

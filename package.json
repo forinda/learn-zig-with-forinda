@@ -14,7 +14,6 @@
     "check": "clarusjs check --strict",
     "test": "node --test \"tests/**/*.test.ts\" \"scripts/**/*.test.ts\"",
     "steps": "node scripts/check-steps.ts",
-    "diffs": "node scripts/diff-steps.ts",
     "format": "prettier --write \"src/**/*.tscl\"",
     "format:check": "prettier --check \"src/**/*.tscl\""
   },

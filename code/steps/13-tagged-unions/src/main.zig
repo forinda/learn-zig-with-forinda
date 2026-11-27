@@ -53,6 +53,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(Terrain.of(5))});
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(Terrain.of(-5))});
 
+    // #region main
     // The race is one value: the loop steps it and prints what it says happened.
     var race = Race.init(compile_pass, &field_speeds_mps, &field_climb_mps);
     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
@@ -73,6 +74,7 @@ pub fn main(init: std.process.Init) !void {
             },
         };
     }
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -178,6 +180,7 @@ const compile_pass: Course = .{
     },
 };
 
+// #region event
 /// Something that happened in the race. One value, one of several kinds, each with its own data:
 /// a tagged union. A `switch` on it says what to do with each kind.
 const Event = union(enum) {
@@ -185,6 +188,7 @@ const Event = union(enum) {
     new_leader: u8, // this rider took the lead
     finished: u8, // this rider crossed the line
 };
+// #endregion event
 
 /// A race: a course, eight riders and a clock. Everything the race loop needs, in one value.
 const Race = struct {
@@ -206,6 +210,7 @@ const Race = struct {
         return race;
     }
 
+    // #region step
     /// One tick of the clock: everyone moves on at its own speed for the terrain under its wheels.
     /// Returns what happened, written into `events` (the caller's buffer; a slice of it comes back).
     fn step(self: *Race, events: []Event) []Event {
@@ -236,6 +241,7 @@ const Race = struct {
         }
         return events[0..n];
     }
+    // #endregion step
 
     /// Which rider is furthest along.
     fn leader(self: *const Race) usize {
@@ -466,6 +472,7 @@ test "each rider climbs at its own speed" {
     try std.testing.expectApproxEqAbs(@as(f64, 13.44), rider.speedOn(.descent), 1e-9);
 }
 
+// #region tests
 /// Test helper: does `events` hold `want`?
 fn hasEvent(events: []const Event, want: Event) bool {
     for (events) |event| {
@@ -494,3 +501,4 @@ test "a finisher is reported once" {
     try std.testing.expect(hasEvent(race.step(&buf), .{ .finished = 'A' }));
     try std.testing.expect(!hasEvent(race.step(&buf), .{ .finished = 'A' }));
 }
+// #endregion tests

@@ -62,9 +62,19 @@ round.
 **I do:** the three copied lines become one loop that runs until `finished`. Each time the rider passes a whole
 kilometre, it prints a marker. `secondsToFinish` does the same counting, without printing, so a test can check it:
 
-<<< @/code/diffs/06-loops.diff
+In `main`, replace the three copied "after" lines (and the rider setup above them) with the loop:
 
-**We do:** make the change (or copy `code/steps/06-loops`) and run it:
+<<< @/code/steps/06-loops/src/main.zig#loop
+
+Below `speedFor`, the same counting as a function, so a test can check it:
+
+<<< @/code/steps/06-loops/src/main.zig#seconds
+
+Its tests, at the end of the file:
+
+<<< @/code/steps/06-loops/src/main.zig#tests
+
+**We do:** make the changes (or copy `code/steps/06-loops`) and run it:
 
 ```sh
 zig build run
@@ -82,6 +92,12 @@ finished in 1250 s
 Why does the test `secondsToFinish(100, 30)` expect 4, not 3.33? The loop counts whole seconds: after 3 seconds the
 rider is at 90 m, not finished, so it takes a fourth.
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/06-loops/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/basics/06-loops) Quizzes on what you just read, a snippet to predict, a bug to fix, and

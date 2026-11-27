@@ -1,4 +1,4 @@
-// The step tooling: listing steps, their diffs, and carrying a fix forward. Run with `pnpm test`.
+// The step tooling: listing steps, the patch between two, and carrying a fix forward. Run with `pnpm test`.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
@@ -7,16 +7,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { listSteps } from './check-steps.ts'
-import { diffStep, staleDiffs, writeDiffs } from './diff-steps.ts'
+import { diffStep } from './diff-steps.ts'
 import { carry } from './carry.ts'
 
 const FIXTURE = fileURLToPath(new URL('./fixtures/steps/', import.meta.url))
 
-/** A scratch copy of the fixture steps (tests write diffs and apply patches). */
-function scratch(): { steps: string; diffs: string } {
+/** A scratch copy of the fixture steps (tests apply patches to it). */
+function scratch(): { steps: string } {
   const root = mkdtempSync(join(tmpdir(), 'steps-'))
   cpSync(FIXTURE, join(root, 'steps'), { recursive: true })
-  return { steps: join(root, 'steps'), diffs: join(root, 'diffs') }
+  return { steps: join(root, 'steps') }
 }
 
 test('listSteps: step folders only (NN-slug), sorted', () => {
@@ -29,14 +29,6 @@ test("a step's diff shows what changed from the previous step, with plain paths"
   assert.match(d, /^--- src\/main\.zig$/m)
   assert.doesNotMatch(d, /01-a|02-b/)
   assert.doesNotMatch(d, /build\.zig/) // unchanged files aren't in it
-})
-
-test('writeDiffs writes one diff per step after the first; staleDiffs finds an edited one', () => {
-  const { steps, diffs } = scratch()
-  assert.deepEqual(writeDiffs(steps, diffs), ['02-b.diff'])
-  assert.deepEqual(staleDiffs(steps, diffs), [])
-  writeFileSync(join(diffs, '02-b.diff'), 'edited by hand\n')
-  assert.deepEqual(staleDiffs(steps, diffs), ['02-b.diff'])
 })
 
 test('carry applies a fix to every step after the given one', () => {

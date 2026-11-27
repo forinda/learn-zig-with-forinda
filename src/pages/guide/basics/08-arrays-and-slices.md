@@ -93,9 +93,23 @@ returns the index of the furthest, and `riderName` turns an index into a letter.
 next lesson's subject), so `'A' + 1` is `'B'`; `@intCast` turns the `usize` index into the `u8` a letter needs (it
 checks the number fits), and `{c}` prints a `u8` as its character:
 
-<<< @/code/diffs/08-arrays-slices.diff
+Under the race constants, every rider's speed:
 
-**We do:** make the change (or copy `code/steps/08-arrays-slices`) and run it:
+<<< @/code/steps/08-arrays-slices/src/main.zig#speeds
+
+Below `printTime`, the functions that work on the whole field:
+
+<<< @/code/steps/08-arrays-slices/src/main.zig#field
+
+In `main`, replace the one-rider loop with the field's:
+
+<<< @/code/steps/08-arrays-slices/src/main.zig#main
+
+Their tests, at the end of the file:
+
+<<< @/code/steps/08-arrays-slices/src/main.zig#tests
+
+**We do:** make the changes (or copy `code/steps/08-arrays-slices`) and run it:
 
 ```sh
 zig build run
@@ -112,6 +126,12 @@ B wins in 20:02
 B leads all the way: every rider rides at one fixed speed, and B's is the highest. Real racing (drafting, tiring,
 attacking) arrives with the Simulation part; for now the field is in place.
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/08-arrays-slices/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/basics/08-arrays-and-slices) Quizzes on what you just read, a snippet to predict, a bug to fix, and

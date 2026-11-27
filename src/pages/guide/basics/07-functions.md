@@ -60,9 +60,19 @@ the rest dropped) and `%` (the remainder, what's left over): `1250 / 60` is `20`
 so the game prints to the screen and the test prints into a buffer it can check. `{d:0>2}` pads the seconds with a
 zero to two digits, so 65 s is `1:05`, not `1:5`:
 
-<<< @/code/diffs/07-functions.diff
+Below `secondsToFinish`, `printTime`:
 
-**We do:** make the change (or copy `code/steps/07-functions`) and run it:
+<<< @/code/steps/07-functions/src/main.zig#print-time
+
+In `main`, the loop prints its times with it (replace the loop and the finish line):
+
+<<< @/code/steps/07-functions/src/main.zig#loop
+
+Its test, at the end of the file:
+
+<<< @/code/steps/07-functions/src/main.zig#tests
+
+**We do:** make the changes (or copy `code/steps/07-functions`) and run it:
 
 ```sh
 zig build run
@@ -77,6 +87,12 @@ km 12 at 20:00
 finished in 20:50
 ```
 
+<details>
+<summary>The whole <code>src/main.zig</code> after this step</summary>
+
+<<< @/code/steps/07-functions/src/main.zig
+
+</details>
 
 ::: tip Check your understanding
 Done reading? [Take the lesson →](/learn/basics/07-functions) Quizzes on what you just read, a snippet to predict, a bug to fix, and

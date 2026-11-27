@@ -74,12 +74,14 @@ pub fn main(init: std.process.Init) !void {
         };
     }
 
+    // #region main
     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
     try out.print("winner: {c}\n", .{race.winner orelse '?'});
     // ...and `if` with a capture runs only when there is one.
     if (race.riderNamed('A')) |you| {
         try out.print("you (A) were {d:.0} m from the line\n", .{race.course.distance_m - you.position_m});
     }
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -200,7 +202,9 @@ const Race = struct {
     clock_s: u32 = 0,
     next_km_m: f64 = 1000, // the next kilometre marker to report
     last_leader: usize = 0, // who led after the last step
+    // #region winner
     winner: ?u8 = null, // nobody yet: an optional is a value or null
+    // #endregion winner
 
     /// A race on `course` with riders A to H at these speeds on the flat and on climbs (riders without
     /// speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
@@ -238,7 +242,9 @@ const Race = struct {
         }
         for (self.riders, before_m) |rider, was_m| {
             if (was_m < self.course.distance_m and rider.finished(self.course.distance_m)) {
+                // #region step-winner
                 if (self.winner == null) self.winner = rider.name; // the first across the line
+                // #endregion step-winner
                 if (n < events.len) {
                     events[n] = .{ .finished = rider.name };
                     n += 1;
@@ -253,6 +259,7 @@ const Race = struct {
         return leaderOf(&self.riders);
     }
 
+    // #region named
     /// The rider with this letter, or null if there's none. A pointer, so the caller can change it.
     fn riderNamed(self: *Race, name: u8) ?*Rider {
         for (&self.riders) |*rider| {
@@ -260,6 +267,7 @@ const Race = struct {
         }
         return null;
     }
+    // #endregion named
 
     /// The race is over when the leader crosses the line.
     fn done(self: *const Race) bool {
@@ -514,6 +522,7 @@ test "a finisher is reported once" {
     try std.testing.expect(!hasEvent(race.step(&buf), .{ .finished = 'A' }));
 }
 
+// #region tests
 test "no winner until someone finishes" {
     var race = Race.init(.{ .name = "Short", .distance_m = 15 }, &.{10}, &.{});
     var buf: [16]Event = undefined;
@@ -533,3 +542,4 @@ test "a known name finds that rider" {
     const rider = race.riderNamed('C') orelse return error.TestExpectedRider;
     try std.testing.expectEqual(@as(f64, 9), rider.speed_mps);
 }
+// #endregion tests
