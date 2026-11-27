@@ -21,6 +21,7 @@ pub fn main(init: std.process.Init) !void {
     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(5)});
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(-5)});
 
+    // #region loop
     // One rider on a flat road, second by second until the line: a loop does the repeating.
     const distance_m = distance_km * 1000;
     const speed_mps = speedFor(0);
@@ -36,6 +37,7 @@ pub fn main(init: std.process.Init) !void {
         }
     }
     try out.print("finished in {d} s\n", .{seconds});
+    // #endregion loop
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -78,6 +80,7 @@ fn speedFor(gradient_pct: f64) f64 {
     }
 }
 
+// #region seconds
 /// How many whole seconds a rider at `speed_mps` needs to cover `distance_m` (a part-second counts).
 fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
     var position_m: f64 = 0;
@@ -88,6 +91,7 @@ fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
     }
     return seconds;
 }
+// #endregion seconds
 
 test "the game has a title" {
     try std.testing.expectEqualStrings("Terminal Tour", title());
@@ -123,6 +127,7 @@ test "climbs are slow, descents fast" {
     try std.testing.expectEqual(@as(f64, 10), speedFor(3));
 }
 
+// #region tests
 test "12.5 km at 10 m/s takes 1250 s" {
     try std.testing.expectEqual(@as(u32, 1250), secondsToFinish(12_500, 10));
 }
@@ -130,3 +135,4 @@ test "12.5 km at 10 m/s takes 1250 s" {
 test "a part-second still counts as a second" {
     try std.testing.expectEqual(@as(u32, 4), secondsToFinish(100, 30));
 }
+// #endregion tests

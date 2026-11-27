@@ -1,7 +1,21 @@
 diff --git src/main.zig src/main.zig
 --- src/main.zig
 +++ src/main.zig
-@@ -29,6 +29,7 @@ pub fn main(init: std.process.Init) !void {
+@@ -5,10 +5,8 @@ const course_name = "Compile Pass";
+ const distance_km: f64 = 12.5;
+ const riders: u32 = 8;
+ 
+ // Each rider's speed on a flat road, in metres per second: rider A is the first, H the last.
+ const field_speeds_mps = [_]f64{ 10.0, 10.4, 9.8, 10.1, 9.6, 10.2, 9.9, 10.3 };
+ 
+ // How far the race moves on each tick of the clock, in seconds.
+ const dt_s: f64 = 1.0;
+@@ -26,12 +24,14 @@ pub fn main(init: std.process.Init) !void {
+     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(5)});
+     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(-5)});
+ 
+     // Eight riders, A to H, each with its own speed: one array of speeds, one of positions.
+     const distance_m = distance_km * 1000;
      var positions_m: [field_speeds_mps.len]f64 = @splat(0); // one position per rider, all at the start
      var seconds: u32 = 0;
      var next_km_m: f64 = 1000;
@@ -9,7 +23,7 @@ diff --git src/main.zig src/main.zig
      while (!finished(positions_m[leader(&positions_m)], distance_m)) {
          advanceAll(&positions_m, &field_speeds_mps, dt_s);
          seconds += 1;
-@@ -36,6 +37,7 @@ pub fn main(init: std.process.Init) !void {
+@@ -39,13 +39,15 @@ pub fn main(init: std.process.Init) !void {
              try out.print("km {d:.0} at ", .{next_km_m / 1000});
              try printTime(out, seconds);
              try out.print(": leader is {c}\n", .{riderName(leader(&positions_m))});
@@ -17,10 +31,24 @@ diff --git src/main.zig src/main.zig
              next_km_m += 1000;
          }
      }
-@@ -123,6 +125,28 @@ fn riderName(i: usize) u8 {
-     return 'A' + @as(u8, @intCast(i));
+     try out.print("{c} wins in ", .{riderName(leader(&positions_m))});
+     try printTime(out, seconds);
+     try out.print("\n", .{});
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+@@ -106,7 +108,6 @@ fn printTime(w: *std.Io.Writer, seconds: u32) !void {
+     try w.print("{d}:{d:0>2}", .{ minutes, rest });
  }
  
+ /// Moves every rider on by `dt` seconds at its own speed. `positions_m` is a slice it can change.
+ fn advanceAll(positions_m: []f64, speeds_mps: []const f64, dt: f64) void {
+     for (positions_m, speeds_mps) |*position_m, speed_mps| {
+@@ -127,7 +128,30 @@ fn leader(positions_m: []const f64) usize {
+ fn riderName(i: usize) u8 {
+     return 'A' + @as(u8, @intCast(i));
+ }
++
 +/// Draws the road into `buf`: dashes, with each rider's letter where it is along the course. Returns the line.
 +fn drawRoad(buf: []u8, positions_m: []const f64, distance_m: f64) []const u8 {
 +    @memset(buf, '-');
@@ -42,11 +70,17 @@ diff --git src/main.zig src/main.zig
 +    const along = @min(position_m / distance_m, 1.0); // 0 at the start, 1 at the line
 +    return @intFromFloat(along * last);
 +}
-+
+ 
  test "the game has a title" {
      try std.testing.expectEqualStrings("Terminal Tour", title());
+@@ -184,7 +208,6 @@ test "times print as minutes and seconds" {
+     try std.testing.expectEqualStrings("60:05", w.buffered());
  }
-@@ -188,3 +212,35 @@ test "everyone moves at their own speed" {
+ 
+ test "everyone moves at their own speed" {
+     var positions = [_]f64{ 0, 0 };
+     const speeds = [_]f64{ 10, 12 };
+@@ -195,4 +218,37 @@ test "everyone moves at their own speed" {
  test "the leader is the furthest along" {
      try std.testing.expectEqual(@as(usize, 1), leader(&.{ 3, 9, 4 }));
  }

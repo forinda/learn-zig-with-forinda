@@ -1,7 +1,7 @@
 diff --git src/main.zig src/main.zig
 --- src/main.zig
 +++ src/main.zig
-@@ -1,12 +1,17 @@
+@@ -1,28 +1,56 @@
  const std = @import("std");
  
 +// The first race. Constants: they never change while the program runs.
@@ -20,7 +20,10 @@ diff --git src/main.zig src/main.zig
  
      // ...and flush sends what's in the buffer to the screen.
      try out.flush();
-@@ -17,6 +22,27 @@ fn title() []const u8 {
+ }
+ 
+ /// The game's name, in one place: the screen and the test both use it.
+ fn title() []const u8 {
      return "Terminal Tour";
  }
  

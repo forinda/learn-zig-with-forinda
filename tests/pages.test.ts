@@ -20,7 +20,7 @@ test('the parts in src/course.ts are the guide and course groups, in order', () 
   for (const p of parts) assert.ok(p.competencies.length > 0, `${p.title} has no competencies`)
 })
 
-test('every guide page follows the rules (part and folder, four teaching sections, step folder, link to its lesson)', () => {
+test('every guide page follows the rules (part and folder, an In the game section with its step code, step folder, link to its lesson)', () => {
   for (const file of mdUnder(GUIDE)) assert.deepEqual(guideProblems(file, STEPS, PAGES), [], file)
 })
 
@@ -36,7 +36,7 @@ test('guide pages and lessons are ordered 1..n within each part; each part ends 
 
 test('the rules catch a broken guide page', () => {
   const problems = guideProblems(BROKEN_GUIDE, STEPS, PAGES).join('\n')
-  for (const rule of ['folder:', 'sections:', 'step:', 'lesson:']) assert.ok(problems.includes(rule), `expected "${rule}" in:\n${problems}`)
+  for (const rule of ['folder:', 'game: no', 'step:', 'lesson:']) assert.ok(problems.includes(rule), `expected "${rule}" in:\n${problems}`)
 })
 
 test('the rules catch a broken lesson', () => {

@@ -1,7 +1,7 @@
 diff --git src/main.zig src/main.zig
 --- src/main.zig
 +++ src/main.zig
-@@ -31,11 +31,15 @@ pub fn main(init: std.process.Init) !void {
+@@ -32,11 +32,15 @@ pub fn main(init: std.process.Init) !void {
          position_m = advance(position_m, speed_mps, dt_s);
          seconds += 1;
          if (position_m >= next_km_m) {
@@ -18,22 +18,35 @@ diff --git src/main.zig src/main.zig
 +    try out.print("\n", .{});
  
      // ...and flush sends what's in the buffer to the screen.
-     try out.flush();
-@@ -89,6 +93,13 @@ fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
-     return seconds;
+@@ -80,7 +84,6 @@ fn speedFor(gradient_pct: f64) f64 {
+     }
  }
  
+ /// How many whole seconds a rider at `speed_mps` needs to cover `distance_m` (a part-second counts).
+ fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
+     var position_m: f64 = 0;
+@@ -91,7 +94,15 @@ fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
+     }
+     return seconds;
+ }
++
 +/// Prints `seconds` as minutes and seconds, like 1:40. It writes through `w`, so a test can read what it wrote.
 +fn printTime(w: *std.Io.Writer, seconds: u32) !void {
 +    const minutes = seconds / 60; // whole minutes: integer division drops the rest
 +    const rest = seconds % 60; // what's left over
 +    try w.print("{d}:{d:0>2}", .{ minutes, rest });
 +}
-+
+ 
  test "the game has a title" {
      try std.testing.expectEqualStrings("Terminal Tour", title());
+@@ -127,7 +138,6 @@ test "climbs are slow, descents fast" {
+     try std.testing.expectEqual(@as(f64, 10), speedFor(3));
  }
-@@ -130,3 +141,16 @@ test "12.5 km at 10 m/s takes 1250 s" {
+ 
+ test "12.5 km at 10 m/s takes 1250 s" {
+     try std.testing.expectEqual(@as(u32, 1250), secondsToFinish(12_500, 10));
+ }
+@@ -135,4 +145,18 @@ test "12.5 km at 10 m/s takes 1250 s" {
  test "a part-second still counts as a second" {
      try std.testing.expectEqual(@as(u32, 4), secondsToFinish(100, 30));
  }

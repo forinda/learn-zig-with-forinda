@@ -1,9 +1,11 @@
 const std = @import("std");
 
+// #region race
 // The first race. Constants: they never change while the program runs.
 const course_name = "Compile Pass";
 const distance_km: f64 = 12.5;
 const riders: u32 = 8;
+// #endregion race
 
 pub fn main(init: std.process.Init) !void {
     // Text goes to the terminal through a writer. It collects text in a buffer...
@@ -11,7 +13,9 @@ pub fn main(init: std.process.Init) !void {
     var stdout: std.Io.File.Writer = .init(.stdout(), init.io, &buffer);
     const out = &stdout.interface;
 
+    // #region main
     try raceCard(out);
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -22,6 +26,7 @@ fn title() []const u8 {
     return "Terminal Tour";
 }
 
+// #region card
 /// The race card: the game's title and what today's race is, in a box.
 fn raceCard(w: *std.Io.Writer) !void {
     try w.print("+------------------------------+\n", .{});
@@ -32,11 +37,13 @@ fn raceCard(w: *std.Io.Writer) !void {
     try w.print("| Field:    {d} riders{s:<10} |\n", .{ riders, "" });
     try w.print("+------------------------------+\n", .{});
 }
+// #endregion card
 
 test "the game has a title" {
     try std.testing.expectEqualStrings("Terminal Tour", title());
 }
 
+// #region test
 test "race card lists the course, distance and riders" {
     var buf: [512]u8 = undefined;
     var w: std.Io.Writer = .fixed(&buf);
@@ -46,3 +53,4 @@ test "race card lists the course, distance and riders" {
     try std.testing.expect(std.mem.indexOf(u8, card, "12.5 km") != null);
     try std.testing.expect(std.mem.indexOf(u8, card, "8 riders") != null);
 }
+// #endregion test

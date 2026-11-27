@@ -1,0 +1,195 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -7,10 +7,8 @@ const riders: u32 = 8;
+ 
+ // Each rider's speed on a flat road, in metres per second: rider A is the first, H the last.
+ const field_speeds_mps = [_]f64{ 10.0, 10.4, 9.8, 10.1, 9.6, 10.2, 9.9, 10.3 };
+ // ...and on a climb: the strongest climbers aren't the fastest on the flat (E climbs best, B worst).
+ const field_climb_mps = [_]f64{ 6.2, 5.6, 6.4, 6.0, 6.8, 5.8, 6.3, 5.9 };
+ 
+ // How far the race moves on each tick of the clock, in seconds.
+ const dt_s: f64 = 1.0;
+@@ -27,7 +25,6 @@ const Rider = struct {
+         self.position_m = advance_m(self.position_m, self.speed_mps, dt);
+     }
+ 
+     /// This rider's speed on `terrain`: a switch picks one for each kind.
+     fn speedOn(self: Rider, terrain: Terrain) f64 {
+         return switch (terrain) {
+@@ -36,7 +33,6 @@ const Rider = struct {
+             .descent => self.speed_mps * 1.4,
+         };
+     }
+ 
+     /// Has this rider crossed the line? It only reads the rider, so it takes a `Rider`.
+     fn finished(self: Rider, distance_m: f64) bool {
+@@ -57,23 +53,28 @@ pub fn main(init: std.process.Init) !void {
+     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(Terrain.of(5))});
+     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(Terrain.of(-5))});
+ 
+-    // The race is one value now: a course, the riders and the clock, with the loop asking it what to do.
++    // The race is one value: the loop steps it and prints what it says happened.
+     var race = Race.init(compile_pass, &field_speeds_mps, &field_climb_mps);
+-    var next_km_m: f64 = 1000;
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
++    var events: [16]Event = undefined;
+     while (!race.done()) {
+-        race.step();
+-        if (race.riders[race.leader()].position_m >= next_km_m) {
+-            try out.print("km {d:.0} at ", .{next_km_m / 1000});
+-            try printTime(out, race.clock_s);
+-            try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
+-            try out.print("  {s}\n", .{drawRoad(&road, &race.riders, race.course.distance_m)});
+-            next_km_m += 1000;
+-        }
++        for (race.step(&events)) |event| switch (event) {
++            .km => |km| {
++                try out.print("km {d} at ", .{km});
++                try printTime(out, race.clock_s);
++                try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
++                try out.print("  {s}\n", .{drawRoad(&road, &race.riders, race.course.distance_m)});
++            },
++            .new_leader => |name| try out.print("  {c} takes the lead\n", .{name}),
++            .finished => |name| {
++                try out.print("{c} crosses the line in ", .{name});
++                try printTime(out, race.clock_s);
++                try out.print("\n", .{});
++            },
++        };
+     }
+-    try out.print("{c} wins in ", .{race.riders[race.leader()].name});
+-    try printTime(out, race.clock_s);
+-    try out.print("\n", .{});
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+@@ -105,7 +106,6 @@ fn finished(position_m: f64, distance_m: f64) bool {
+     return position_m >= distance_m;
+ }
+ 
+ /// The kinds of road: one name for each, instead of remembering what a gradient means.
+ const Terrain = enum {
+     flat,
+@@ -128,7 +128,6 @@ fn speedFor(terrain: Terrain) f64 {
+         .descent => 14.0,
+     };
+ }
+ 
+ /// How many whole seconds a rider at `speed_mps` needs to cover `distance_m` (a part-second counts).
+ fn secondsToFinish(distance_m: f64, speed_mps: f64) u32 {
+@@ -148,7 +147,6 @@ fn printTime(w: *std.Io.Writer, seconds: u32) !void {
+     try w.print("{d}:{d:0>2}", .{ minutes, rest });
+ }
+ 
+ /// A stretch of road: where it starts and how steep it is, until the next one starts.
+ const Segment = struct {
+     start_m: f64,
+@@ -181,13 +179,24 @@ const compile_pass: Course = .{
+         .{ .start_m = 8000, .gradient_pct = 0 },
+     },
+ };
++
++/// Something that happened in the race. One value, one of several kinds, each with its own data:
++/// a tagged union. A `switch` on it says what to do with each kind.
++const Event = union(enum) {
++    km: u32, // the leader passed this kilometre marker
++    new_leader: u8, // this rider took the lead
++    finished: u8, // this rider crossed the line
++};
+ 
+ /// A race: a course, eight riders and a clock. Everything the race loop needs, in one value.
+ const Race = struct {
+     course: Course,
+     riders: [8]Rider,
+     clock_s: u32 = 0,
++    next_km_m: f64 = 1000, // the next kilometre marker to report
++    last_leader: usize = 0, // who led after the last step
+ 
+     /// A race on `course` with riders A to H at these speeds on the flat and on climbs (riders without
+     /// speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
+@@ -203,12 +212,34 @@ const Race = struct {
+ 
+     /// One tick of the clock: everyone moves on at its own speed for the terrain under its wheels.
+-    fn step(self: *Race) void {
+-        for (&self.riders) |*rider| {
++    /// Returns what happened, written into `events` (the caller's buffer; a slice of it comes back).
++    fn step(self: *Race, events: []Event) []Event {
++        var n: usize = 0;
++        var before_m: [8]f64 = undefined;
++        for (&self.riders, 0..) |*rider, i| {
++            before_m[i] = rider.position_m;
+             const speed_mps = rider.speedOn(self.course.terrainAt(rider.position_m));
+             rider.position_m = advance_m(rider.position_m, speed_mps, dt_s);
+         }
+         self.clock_s += 1;
++        const first = self.leader();
++        if (first != self.last_leader and n < events.len) {
++            events[n] = .{ .new_leader = self.riders[first].name };
++            n += 1;
++            self.last_leader = first;
++        }
++        if (self.riders[first].position_m >= self.next_km_m and n < events.len) {
++            events[n] = .{ .km = @intFromFloat(self.next_km_m / 1000) };
++            n += 1;
++            self.next_km_m += 1000;
++        }
++        for (self.riders, before_m) |rider, was_m| {
++            if (was_m < self.course.distance_m and rider.finished(self.course.distance_m) and n < events.len) {
++                events[n] = .{ .finished = rider.name };
++                n += 1;
++            }
++        }
++        return events[0..n];
+     }
+ 
+@@ -398,7 +429,8 @@ test "a new race has everyone at the start" {
+ 
+ test "after one step everyone has moved by their speed" {
+     var race = Race.init(test_course, &.{ 10, 12 }, &.{});
+-    race.step();
++    var buf: [16]Event = undefined;
++    _ = race.step(&buf);
+     try std.testing.expectEqual(@as(f64, 10), race.riders[0].position_m);
+     try std.testing.expectEqual(@as(f64, 12), race.riders[1].position_m);
+     try std.testing.expectEqual(@as(u32, 1), race.clock_s);
+@@ -419,7 +451,6 @@ test "riders without speeds of their own ride at 10 m/s, and climb at 6" {
+     try std.testing.expectEqual(@as(f64, 6), race.riders[7].climb_mps);
+ }
+ 
+ test "gradients map to terrain" {
+     try std.testing.expectEqual(Terrain.descent, Terrain.of(-5));
+     try std.testing.expectEqual(Terrain.flat, Terrain.of(0));
+@@ -440,4 +471,34 @@ test "each rider climbs at its own speed" {
+     try std.testing.expectEqual(@as(f64, 6.8), rider.speedOn(.climb));
+     try std.testing.expectApproxEqAbs(@as(f64, 13.44), rider.speedOn(.descent), 1e-9);
+ }
++
++/// Test helper: does `events` hold `want`?
++fn hasEvent(events: []const Event, want: Event) bool {
++    for (events) |event| {
++        if (std.meta.eql(event, want)) return true;
++    }
++    return false;
++}
++
++test "a step that passes a km marker reports it" {
++    var race = Race.init(.{ .name = "Test Loop", .distance_m = 2500 }, &.{1000}, &.{});
++    var buf: [16]Event = undefined;
++    try std.testing.expect(hasEvent(race.step(&buf), .{ .km = 1 }));
++}
++
++test "a new leader is reported once" {
++    var race = Race.init(test_course, &.{ 10, 12 }, &.{});
++    var buf: [16]Event = undefined;
++    try std.testing.expect(hasEvent(race.step(&buf), .{ .new_leader = 'B' }));
++    try std.testing.expect(!hasEvent(race.step(&buf), .{ .new_leader = 'B' }));
++}
++
++test "a finisher is reported once" {
++    var race = Race.init(.{ .name = "Short", .distance_m = 15 }, &.{10}, &.{});
++    var buf: [16]Event = undefined;
++    try std.testing.expect(!hasEvent(race.step(&buf), .{ .finished = 'A' }));
++    try std.testing.expect(hasEvent(race.step(&buf), .{ .finished = 'A' }));
++    try std.testing.expect(!hasEvent(race.step(&buf), .{ .finished = 'A' }));
++}

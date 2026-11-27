@@ -5,7 +5,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { parts } from '../src/course.ts'
 
-export const GUIDE_STEPS = ['Engage', 'Explore', 'Explain', 'Elaborate'] as const
+export const GAME = 'In the game'
 export const LESSON_STEPS = ['Recall', 'Predict', 'Fix it', 'Build it'] as const
 export const STRETCH = 'Stretch'
 export const MIN_QUIZZES = 3
@@ -58,14 +58,21 @@ function linkedPages(text: string, prefix: string, pagesDir: string): string[] {
   return [...text.matchAll(new RegExp(`\\]\\((/${prefix}/[^)#\\s]+)`, 'g'))].map((m) => join(pagesDir, `${m[1]}.md`))
 }
 
-/** What's wrong with one guide page (empty: nothing). */
+/** What's wrong with one guide page (empty: nothing). Headings are free (they name the concept); a page must have
+ * an "In the game" section with code from its own step, and a diff only in the collapsed section at the end. */
 export function guideProblems(file: string, stepsDir: string, pagesDir: string): string[] {
   const text = readFileSync(file, 'utf8')
   const fm = frontmatter(text)
   const b = body(text)
   const problems = common(file, fm, b, stepsDir)
   const h = h2s(b)
-  if (h.join('|') !== GUIDE_STEPS.join('|')) problems.push(`sections: [${h.join(', ')}], expected [${GUIDE_STEPS.join(', ')}]`)
+  if (!h.includes(GAME)) problems.push(`game: no "## ${GAME}" section`)
+  else if (fm.step && !section(b, GAME).includes(`<<< @/code/steps/${fm.step}/`)) problems.push(`game: "${GAME}" includes no code from code/steps/${fm.step}/`)
+  if (h.length && h.at(-1) !== GAME) problems.push(`game: "${GAME}" must be the last section (it was "${h.at(-1)}")`)
+  for (const m of b.matchAll(/<<< @\/code\/diffs\//g)) {
+    const before = b.slice(0, m.index)
+    if (before.lastIndexOf('<details>') < before.lastIndexOf('</details>') || before.lastIndexOf('<details>') === -1) problems.push('code: a diff outside the collapsed <details> section')
+  }
   const lessons = linkedPages(b, 'learn', pagesDir)
   const own = `/learn/${basename(dirname(file))}/${basename(file, '.md')}`
   if (!lessons.length) problems.push('lesson: no link to its lesson (/learn/...)')

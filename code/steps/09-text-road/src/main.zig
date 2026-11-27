@@ -29,7 +29,9 @@ pub fn main(init: std.process.Init) !void {
     var positions_m: [field_speeds_mps.len]f64 = @splat(0); // one position per rider, all at the start
     var seconds: u32 = 0;
     var next_km_m: f64 = 1000;
+    // #region road-var
     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+    // #endregion road-var
     while (!finished(positions_m[leader(&positions_m)], distance_m)) {
         advanceAll(&positions_m, &field_speeds_mps, dt_s);
         seconds += 1;
@@ -37,7 +39,9 @@ pub fn main(init: std.process.Init) !void {
             try out.print("km {d:.0} at ", .{next_km_m / 1000});
             try printTime(out, seconds);
             try out.print(": leader is {c}\n", .{riderName(leader(&positions_m))});
+            // #region print-road
             try out.print("  {s}\n", .{drawRoad(&road, &positions_m, distance_m)});
+            // #endregion print-road
             next_km_m += 1000;
         }
     }
@@ -125,6 +129,7 @@ fn riderName(i: usize) u8 {
     return 'A' + @as(u8, @intCast(i));
 }
 
+// #region road
 /// Draws the road into `buf`: dashes, with each rider's letter where it is along the course. Returns the line.
 fn drawRoad(buf: []u8, positions_m: []const f64, distance_m: f64) []const u8 {
     @memset(buf, '-');
@@ -146,6 +151,7 @@ fn columnOf(position_m: f64, distance_m: f64, last: f64) usize {
     const along = @min(position_m / distance_m, 1.0); // 0 at the start, 1 at the line
     return @intFromFloat(along * last);
 }
+// #endregion road
 
 test "the game has a title" {
     try std.testing.expectEqualStrings("Terminal Tour", title());
@@ -213,6 +219,7 @@ test "the leader is the furthest along" {
     try std.testing.expectEqual(@as(usize, 1), leader(&.{ 3, 9, 4 }));
 }
 
+// #region tests
 test "a rider at the start is at column 0" {
     var road: [8]u8 = undefined;
     const line = drawRoad(&road, &.{0}, 100);
@@ -244,3 +251,4 @@ test "the player (rider A) shows when the leader is elsewhere" {
     const line = drawRoad(&road, &.{ 10, 10.5, 90 }, 100); // A and B share column 0; C leads
     try std.testing.expectEqual(@as(u8, 'A'), line[0]);
 }
+// #endregion tests

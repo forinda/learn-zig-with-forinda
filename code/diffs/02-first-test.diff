@@ -1,7 +1,7 @@
 diff --git src/main.zig src/main.zig
 --- src/main.zig
 +++ src/main.zig
-@@ -6,8 +6,17 @@ pub fn main(init: std.process.Init) !void {
+@@ -6,8 +6,23 @@ pub fn main(init: std.process.Init) !void {
      var stdout: std.Io.File.Writer = .init(.stdout(), init.io, &buffer);
      const out = &stdout.interface;
  

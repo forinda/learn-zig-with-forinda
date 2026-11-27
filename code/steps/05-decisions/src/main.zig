@@ -26,10 +26,12 @@ pub fn main(init: std.process.Init) !void {
     position_m = advance(position_m, speed_mps, dt_s);
     try out.print("after 3 s: {d:.1} m\n", .{position_m});
 
+    // #region main
     // The road decides how fast you go.
     try out.print("flat road:  {d:.0} m/s\n", .{speedFor(0)});
     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(5)});
     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(-5)});
+    // #endregion main
 
     // ...and flush sends what's in the buffer to the screen.
     try out.flush();
@@ -56,11 +58,14 @@ fn advance(position_m: f64, speed_mps: f64, dt: f64) f64 {
     return position_m + speed_mps * dt;
 }
 
+// #region finished
 /// Has a rider at `position_m` crossed the line at `distance_m`?
 fn finished(position_m: f64, distance_m: f64) bool {
     return position_m >= distance_m;
 }
+// #endregion finished
 
+// #region speed
 /// How fast a rider goes on a road this steep (percent: up is positive, down is negative).
 fn speedFor(gradient_pct: f64) f64 {
     if (gradient_pct > 3) {
@@ -71,6 +76,7 @@ fn speedFor(gradient_pct: f64) f64 {
         return 10.0; // flat enough
     }
 }
+// #endregion speed
 
 test "the game has a title" {
     try std.testing.expectEqualStrings("Terminal Tour", title());
@@ -94,6 +100,7 @@ test "advance adds to where the rider already is" {
     try std.testing.expectEqual(@as(f64, 125), advance(100, 12.5, 2));
 }
 
+// #region tests
 test "a rider at the line has finished" {
     try std.testing.expect(finished(12_500, 12_500));
     try std.testing.expect(!finished(12_499.9, 12_500));
@@ -105,3 +112,4 @@ test "climbs are slow, descents fast" {
     try std.testing.expectEqual(@as(f64, 10), speedFor(0));
     try std.testing.expectEqual(@as(f64, 10), speedFor(3));
 }
+// #endregion tests
