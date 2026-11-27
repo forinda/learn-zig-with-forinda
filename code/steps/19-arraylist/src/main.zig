@@ -20,7 +20,9 @@ const Rider = struct {
     climb_mps: f64 = 6.0, // its speed on a climb
     position_m: f64 = 0, // a default: every rider starts at the line
     full_name: []const u8 = "", // its name on the roster (owned by whoever loaded the roster)
+    // #region last-m
     last_m: f64 = 0, // where it was before the latest step (to see who has just crossed the line)
+    // #endregion last-m
 
     /// Moves this rider on by `dt` seconds. It changes the rider, so it takes `*Rider`.
     fn advance(self: *Rider, dt: f64) void {
@@ -396,6 +398,7 @@ const Race = struct {
     }
     // #endregion from-field
 
+    // #region init
     /// A race on `course` with a rider in each place of `field`, at these speeds on the flat and on
     /// climbs (riders without speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
     fn init(field: []Rider, course: Course, speeds_mps: []const f64, climbs_mps: []const f64) Race {
@@ -406,7 +409,9 @@ const Race = struct {
         }
         return .{ .course = course, .riders = field };
     }
+    // #endregion init
 
+    // #region step
     /// One tick of the clock: everyone moves on at its own speed for the terrain under its wheels.
     /// Returns what happened, written into `events` (the caller's buffer; a slice of it comes back).
     fn step(self: *Race, events: []Event) []Event {
@@ -439,6 +444,7 @@ const Race = struct {
         }
         return events[0..n];
     }
+    // #endregion step
 
     /// Which rider is furthest along.
     fn leader(self: *const Race) usize {

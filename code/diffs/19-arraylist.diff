@@ -1,7 +1,7 @@
 diff --git src/main.zig src/main.zig
 --- src/main.zig
 +++ src/main.zig
-@@ -19,9 +19,8 @@ const Rider = struct {
+@@ -19,9 +19,10 @@ const Rider = struct {
      speed_mps: f64,
      climb_mps: f64 = 6.0, // its speed on a climb
      position_m: f64 = 0, // a default: every rider starts at the line
@@ -10,7 +10,7 @@ diff --git src/main.zig src/main.zig
  
      /// Moves this rider on by `dt` seconds. It changes the rider, so it takes `*Rider`.
      fn advance(self: *Rider, dt: f64) void {
-@@ -88,15 +87,15 @@ pub fn main(init: std.process.Init) !void {
+@@ -88,15 +89,15 @@ pub fn main(init: std.process.Init) !void {
  
      // The race is one value: the loop steps it and prints what it says happened.
      // The course comes from text now. Reading it can fail, so `try`: if the text is wrong, main stops with the error.
@@ -26,7 +26,7 @@ diff --git src/main.zig src/main.zig
      var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
      var events: [16]Event = undefined;
      while (!race.done()) {
-@@ -105,7 +104,7 @@ pub fn main(init: std.process.Init) !void {
+@@ -105,7 +106,7 @@ pub fn main(init: std.process.Init) !void {
                  try out.print("km {d} at ", .{km});
                  try printTime(out, race.clock_s);
                  try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
@@ -35,7 +35,7 @@ diff --git src/main.zig src/main.zig
              },
              .new_leader => |name| try out.print("  {c} takes the lead\n", .{name}),
              .finished => |name| {
-@@ -117,13 +116,11 @@ pub fn main(init: std.process.Init) !void {
+@@ -117,13 +118,11 @@ pub fn main(init: std.process.Init) !void {
      }
  
      // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
@@ -47,7 +47,7 @@ diff --git src/main.zig src/main.zig
      // ...and `if` with a capture runs only when there is one.
      // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
      if (race.riderNamed(you)) |rider| {
-@@ -289,15 +286,16 @@ const compile_pass_text =
+@@ -289,15 +288,16 @@ const compile_pass_text =
  ;
  
  /// Everything that can be wrong with a course's text: an error set.
@@ -67,7 +67,7 @@ diff --git src/main.zig src/main.zig
          var words = std.mem.tokenizeScalar(u8, line, ' ');
          const kind = words.next() orelse continue; // an empty line: skip it
          const length_m = try number(words.next());
-@@ -307,14 +305,14 @@ fn parseCourse(name: []const u8, text: []const u8, buf: []Segment) ParseError!Co
+@@ -307,14 +307,14 @@ fn parseCourse(name: []const u8, text: []const u8, buf: []Segment) ParseError!Co
              try number(words.next())
          else
              return error.UnknownTerrain;
@@ -84,7 +84,7 @@ diff --git src/main.zig src/main.zig
  /// The field as text, one rider a line: speed on the flat, speed on a climb (m/s), and its name.
  /// Rider A is the first line, B the second, and so on.
  const roster_text =
-@@ -332,39 +330,37 @@ const roster_text =
+@@ -332,39 +332,37 @@ const roster_text =
  const RosterError = ParseError || error{ MissingName, OutOfMemory };
  
  /// Loads the riders in `text`. Allocates the field and each rider's name: free it all with `freeField`.
@@ -134,7 +134,7 @@ diff --git src/main.zig src/main.zig
  
  /// A word as a number: `MissingNumber` when there's no word, `BadNumber` when it isn't one.
  fn number(word: ?[]const u8) ParseError!f64 {
-@@ -383,42 +379,40 @@ const Event = union(enum) {
+@@ -383,42 +381,43 @@ const Event = union(enum) {
  /// A race: a course, eight riders and a clock. Everything the race loop needs, in one value.
  const Race = struct {
      course: Course,
@@ -187,7 +187,7 @@ diff --git src/main.zig src/main.zig
              const speed_mps = rider.speedOn(self.course.terrainAt(rider.position_m));
              rider.position_m = advance_m(rider.position_m, speed_mps, dt_s);
          }
-@@ -434,8 +428,8 @@ const Race = struct {
+@@ -434,8 +433,8 @@ const Race = struct {
              n += 1;
              self.next_km_m += 1000;
          }
@@ -198,7 +198,10 @@ diff --git src/main.zig src/main.zig
                  if (self.winner == null) self.winner = rider.name; // the first across the line
                  if (n < events.len) {
                      events[n] = .{ .finished = rider.name };
-@@ -448,12 +442,12 @@ const Race = struct {
+@@ -445,15 +444,16 @@ const Race = struct {
+         }
+         return events[0..n];
+     }
  
      /// Which rider is furthest along.
      fn leader(self: *const Race) usize {
@@ -213,7 +216,7 @@ diff --git src/main.zig src/main.zig
              if (rider.name == name) return rider;
          }
          return null;
-@@ -633,13 +627,15 @@ test "a new rider starts at the line" {
+@@ -633,13 +633,15 @@ test "a new rider starts at the line" {
  const test_course: Course = .{ .name = "Test Loop", .distance_m = 100 };
  
  test "a new race has everyone at the start" {
@@ -231,7 +234,7 @@ diff --git src/main.zig src/main.zig
      var buf: [16]Event = undefined;
      _ = race.step(&buf);
      try std.testing.expectEqual(@as(f64, 10), race.riders[0].position_m);
-@@ -648,7 +644,8 @@ test "after one step everyone has moved by their speed" {
+@@ -648,7 +650,8 @@ test "after one step everyone has moved by their speed" {
  }
  
  test "the race is done when the leader is exactly on the line" {
@@ -241,7 +244,7 @@ diff --git src/main.zig src/main.zig
      race.riders[1].position_m = 100;
      try std.testing.expect(race.done());
      race.riders[1].position_m = 99.9;
-@@ -656,7 +653,8 @@ test "the race is done when the leader is exactly on the line" {
+@@ -656,7 +659,8 @@ test "the race is done when the leader is exactly on the line" {
  }
  
  test "riders without speeds of their own ride at 10 m/s, and climb at 6" {
@@ -251,7 +254,7 @@ diff --git src/main.zig src/main.zig
      try std.testing.expectEqual(@as(f64, 12), race.riders[0].speed_mps);
      try std.testing.expectEqual(@as(f64, 10), race.riders[7].speed_mps);
      try std.testing.expectEqual(@as(f64, 6), race.riders[7].climb_mps);
-@@ -692,20 +690,23 @@ fn hasEvent(events: []const Event, want: Event) bool {
+@@ -692,20 +696,23 @@ fn hasEvent(events: []const Event, want: Event) bool {
  }
  
  test "a step that passes a km marker reports it" {
@@ -278,7 +281,7 @@ diff --git src/main.zig src/main.zig
      var buf: [16]Event = undefined;
      try std.testing.expect(!hasEvent(race.step(&buf), .{ .finished = 'A' }));
      try std.testing.expect(hasEvent(race.step(&buf), .{ .finished = 'A' }));
-@@ -713,7 +714,8 @@ test "a finisher is reported once" {
+@@ -713,7 +720,8 @@ test "a finisher is reported once" {
  }
  
  test "no winner until someone finishes" {
@@ -288,7 +291,7 @@ diff --git src/main.zig src/main.zig
      var buf: [16]Event = undefined;
      _ = race.step(&buf);
      try std.testing.expectEqual(@as(?u8, null), race.winner);
-@@ -722,19 +724,21 @@ test "no winner until someone finishes" {
+@@ -722,19 +730,21 @@ test "no winner until someone finishes" {
  }
  
  test "an unknown rider name gives null" {
@@ -314,7 +317,7 @@ diff --git src/main.zig src/main.zig
      try std.testing.expectEqual(@as(usize, 4), course.segments.len);
      try std.testing.expectEqual(@as(f64, 12_500), course.distance_m);
      try std.testing.expectEqual(@as(f64, 4000), course.segments[1].start_m);
-@@ -743,24 +747,16 @@ test "Compile Pass parses into four segments" {
+@@ -743,24 +753,16 @@ test "Compile Pass parses into four segments" {
  }
  
  test "an unknown terrain is an error" {
@@ -343,14 +346,14 @@ diff --git src/main.zig src/main.zig
  }
  
  test "the player picks a rider by letter, either case" {
-@@ -828,7 +824,6 @@ test "no input is no name, and nothing to free" {
+@@ -828,7 +830,6 @@ test "no input is no name, and nothing to free" {
      try std.testing.expect(try askLineAlloc(std.testing.allocator, &in, &out, "Your name? ") == null);
  }
  
  test "the roster loads eight riders, each with a name of its own" {
      const field = try loadField(std.testing.allocator, roster_text);
      defer freeField(std.testing.allocator, field);
-@@ -853,10 +848,29 @@ test "whichever allocation fails, loadField leaks nothing" {
+@@ -853,10 +854,29 @@ test "whichever allocation fails, loadField leaks nothing" {
      try std.testing.checkAllAllocationFailures(std.testing.allocator, loadAndFree, .{roster_text});
  }
  
