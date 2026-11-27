@@ -77,7 +77,8 @@ error: returning address of expired local variable 'buf'
 - [ ] Return buf[0..] instead of &buf
 - [ ] Add defer before the return
 
-`buf` lives in `riderLabel`'s stack frame, gone when it returns, however you slice it. The label must come from
+`buf` lives in `riderLabel`'s stack frame, gone when it returns. `buf[0..]` is worse than the error: it compiles,
+and still points into the gone frame (the compiler only catches the plain `&buf`). The label must come from
 memory that outlives the call: the caller's, or an allocator's.
 :::
 
