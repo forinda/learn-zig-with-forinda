@@ -1,0 +1,22 @@
+{{-- Plain pages: the docs theme with this site's navigation (src/nav.ts). --}}
+@import docsTheme from '@clarusjs/theme-docs/layout.tscl'
+@import { theme } from '~/nav.ts'
+@import type { Heading } from '@clarusjs/theme-docs/nav.ts'
+@import '~/styles/docs.css'
+@input title: string
+@input path: string = '/'
+@input source: string = ''
+@input url: string = ''
+@input description: string = 'Learn Zig by building a terminal racing game.'
+@input headings: Heading[] = []
+
+<docsTheme
+  [config]="theme"
+  [title]="title"
+  [path]="path"
+  [source]="source"
+  [url]="url"
+  [description]="description"
+  [headings]="headings"
+  ><slot
+/></docsTheme>

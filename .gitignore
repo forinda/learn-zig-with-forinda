@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.clarusjs/
+.netlify/
+*.log
+.superpowers/
+.zig-cache/
+zig-out/

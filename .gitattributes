@@ -1,0 +1,2 @@
+# LF everywhere (Windows CI too): the step diffs are compared byte for byte.
+* text=auto eol=lf

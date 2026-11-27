@@ -165,7 +165,7 @@ pub fn build(b: *std.Build) void {
 
 - **01-hello:** `main(init: std.process.Init)` prints `Terminal Tour` through `std.Io.File.Writer.init(.stdout(), init.io, &buf)` and flushes. No tests yet (`zig build test` runs zero tests and passes).
 - **02-first-test:** `fn title() []const u8` returns "Terminal Tour"; main prints it; `test "the game has a title"` with `expectEqualStrings`.
-- **03-race-card:** constants for the first race (`course_name = "Ngong Road"`, `distance_km: f64 = 12.5`, `riders: u32 = 8`); `fn raceCard(w: *std.Io.Writer) !void` prints a bordered card (title, course, distance with one decimal, riders); tests: `test "race card lists the course, distance and riders"` writing into `std.Io.Writer.fixed(&buf)` and checking `buf` contains "Ngong Road", "12.5 km", "8 riders".
+- **03-race-card:** constants for the first race (`course_name = "Compile Pass"`, `distance_km: f64 = 12.5`, `riders: u32 = 8`); `fn raceCard(w: *std.Io.Writer) !void` prints a bordered card (title, course, distance with one decimal, riders); tests: `test "race card lists the course, distance and riders"` writing into `std.Io.Writer.fixed(&buf)` and checking `buf` contains "Compile Pass", "12.5 km", "8 riders".
 - **code/broken/03-race-card/a.zig, b.zig, c.zig:** three single-file programs, each with one classic error for lesson 3's Explore: (a) an unused local constant, (b) a type mismatch (`const riders: u32 = 8.5`), (c) a missing `try` on an error union. Each has a comment at the top saying how to run it (`zig run a.zig`) — CI does NOT build code/broken.
 
 - [ ] **Step 1:** For 02 and 03, write the test first, run `zig build test` → Expected: FAIL (function missing); implement; → PASS.

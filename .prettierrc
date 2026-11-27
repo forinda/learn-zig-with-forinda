@@ -1,0 +1,6 @@
+{
+  "plugins": ["@clarusjs/prettier-plugin"],
+  "singleQuote": true,
+  "semi": false,
+  "printWidth": 120
+}
