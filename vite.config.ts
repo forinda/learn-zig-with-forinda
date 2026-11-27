@@ -34,6 +34,8 @@ export default defineConfig({
         components: ['/src/components'],
         // ::: tip / ::: warning blocks and > [!NOTE] alerts.
         container: { tag: 'callout', from: '@clarusjs/theme-docs/callout.tscl' },
+        // Line numbers on code blocks (not on shell commands: those are copied, not referred to by line).
+        lineNumbers: true,
         // A copy button on every code block: readers copy the code into their own project.
         copy: { tag: 'copy', from: '@clarusjs/theme-docs/copy.tscl' },
         // ::: quiz blocks in lessons render through the theme's quiz (its options are an island).
