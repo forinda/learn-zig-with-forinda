@@ -1,0 +1,292 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -85,54 +85,73 @@ pub fn main(init: std.process.Init) !void {
+     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(Terrain.of(5))});
+     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(Terrain.of(-5))});
+ 
+-    // The race is one value: the loop steps it and prints what it says happened.
+-    // The course comes from text now. Reading it can fail, so `try`: if the text is wrong, main stops with the error.
+-    const course = try parseCourse(gpa, course_name, compile_pass_text);
+-    defer gpa.free(course.segments);
+-    // The riders come from the roster: allocated, so freed when main ends. `defer` says so right here,
+-    // next to the allocation, instead of at every way out of main.
+-    const field = try loadField(gpa, roster_text);
+-    defer freeField(gpa, field);
+-    var race = try Race.fromField(course, field);
+-    var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+-    var events: [16]Event = undefined;
+-    while (!race.done()) {
+-        for (race.step(&events)) |event| switch (event) {
+-            .km => |km| {
+-                try out.print("km {d} at ", .{km});
+-                try printTime(out, race.clock_s);
+-                try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
+-                try out.print("  {s}\n", .{drawRoad(&road, race.riders, race.course.distance_m, you_index)});
+-            },
+-            .new_leader => |name| try out.print("  {c} takes the lead\n", .{name}),
+-            .finished => |name| {
+-                try out.print("{c} crosses the line in ", .{name});
+-                try printTime(out, race.clock_s);
+-                try out.print("\n", .{});
+-            },
+-        };
+-    }
++    // Wins per rider name, kept across races: a hash map from name to count. It owns copies of the names,
++    // because each race's field (and the names in it) is freed when the race ends.
++    var standings: Standings = .empty;
++    defer freeStandings(gpa, &standings);
++
++    var race_no: usize = 0;
++    while (true) : (race_no += 1) {
++        // The race is one value: the loop steps it and prints what it says happened.
++        const plan = courses[race_no % courses.len];
++        try out.print("\nrace {d}: {s}\n", .{ race_no + 1, plan.name });
++        // The course comes from text. Reading it can fail, so `try`: if the text is wrong, main stops with the error.
++        const course = try parseCourse(gpa, plan.name, plan.text);
++        defer gpa.free(course.segments); // inside the loop: freed at the end of each race, not of main
++        // The riders come from the roster, fresh for each race, and are freed when it's over.
++        const field = try loadField(gpa, roster_text);
++        defer freeField(gpa, field);
++        var race = try Race.fromField(course, field);
++        var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
++        var events: [16]Event = undefined;
++        while (!race.done()) {
++            for (race.step(&events)) |event| switch (event) {
++                .km => |km| {
++                    try out.print("km {d} at ", .{km});
++                    try printTime(out, race.clock_s);
++                    try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
++                    try out.print("  {s}\n", .{drawRoad(&road, race.riders, race.course.distance_m, you_index)});
++                },
++                .new_leader => |name| try out.print("  {c} takes the lead\n", .{name}),
++                .finished => |name| {
++                    try out.print("{c} crosses the line in ", .{name});
++                    try printTime(out, race.clock_s);
++                    try out.print("\n", .{});
++                },
++            };
++        }
+ 
+-    // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+-    if (race.winner) |w| {
+-        try out.print("winner: {c} ({s})\n", .{ w, race.riderNamed(w).?.full_name });
+-    } else {
+-        try out.print("winner: ?\n", .{});
+-    }
+-    // ...and `if` with a capture runs only when there is one.
+-    // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
+-    if (race.riderNamed(you)) |rider| {
+-        if (rider.finished(race.course.distance_m)) {
+-            try out.print("you ({[name]c}) crossed the line!\n", .{ .name = rider.name });
++        // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
++        if (race.winner) |w| {
++            try out.print("winner: {c} ({s})\n", .{ w, race.riderNamed(w).?.full_name });
+         } else {
+-            try out.print("you ({[name]c}) were {[gap]d:.0} m from the line\n", .{
+-                .name = rider.name,
+-                .gap = race.course.distance_m - rider.position_m,
+-            });
++            try out.print("winner: ?\n", .{});
+         }
++        // ...and `if` with a capture runs only when there is one.
++        // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
++        if (race.riderNamed(you)) |rider| {
++            if (rider.finished(race.course.distance_m)) {
++                try out.print("you ({[name]c}) crossed the line!\n", .{ .name = rider.name });
++            } else {
++                try out.print("you ({[name]c}) were {[gap]d:.0} m from the line\n", .{
++                    .name = rider.name,
++                    .gap = race.course.distance_m - rider.position_m,
++                });
++            }
++        }
++
++        if (race.winner) |w| try recordWin(gpa, &standings, race.riderNamed(w).?.full_name);
++        try printStandings(gpa, out, &standings);
++        const again = askLine(in, out, "Race again? (y/n) ") catch |e| switch (e) {
++            error.StreamTooLong => null, // an answer that long isn't "y"
++            else => return e,
++        };
++        if (!wantsMore(again)) break;
+     }
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+@@ -289,7 +308,6 @@ const compile_pass_text =
+ const ParseError = error{ UnknownTerrain, MissingNumber, BadNumber, OutOfMemory };
+ 
+ /// Reads a course from `text` into `buf`. Returns the course, or an error saying what was wrong with the text.
+ fn parseCourse(gpa: std.mem.Allocator, name: []const u8, text: []const u8) ParseError!Course {
+     var segments: std.ArrayList(Segment) = .empty; // starts with no memory, grows as segments are added
+     errdefer segments.deinit(gpa);
+@@ -311,7 +329,6 @@ fn parseCourse(gpa: std.mem.Allocator, name: []const u8, text: []const u8) Parse
+     // The list's memory becomes the course's: the caller frees `course.segments`.
+     return .{ .name = name, .distance_m = start_m, .segments = try segments.toOwnedSlice(gpa) };
+ }
+ 
+ /// The field as text, one rider a line: speed on the flat, speed on a climb (m/s), and its name.
+ /// Rider A is the first line, B the second, and so on.
+@@ -330,7 +347,6 @@ const roster_text =
+ const RosterError = ParseError || error{ MissingName, OutOfMemory };
+ 
+ /// Loads the riders in `text`. Allocates the field and each rider's name: free it all with `freeField`.
+ fn loadField(gpa: std.mem.Allocator, text: []const u8) RosterError![]Rider {
+     var field: std.ArrayList(Rider) = .empty; // grows one rider at a time: no need to count first
+     errdefer field.deinit(gpa); // only if we return an error: on success the caller owns the riders
+@@ -354,7 +370,6 @@ fn loadField(gpa: std.mem.Allocator, text: []const u8) RosterError![]Rider {
+     }
+     return field.toOwnedSlice(gpa); // the list's memory, exactly as long as the field, now the caller's
+ }
+ 
+ /// Frees what `loadField` allocated: each name, then the field.
+ fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
+@@ -362,6 +377,74 @@ fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
+     gpa.free(field);
+ }
+ 
++/// A second course, flatter: the riders who are fastest on the flat should do better here.
++const linker_loop_text =
++    \\flat 5000
++    \\climb 1000 4
++    \\flat 6000
++;
++
++/// The courses, raced in turn.
++const courses = [_]struct { name: []const u8, text: []const u8 }{
++    .{ .name = course_name, .text = compile_pass_text },
++    .{ .name = "Linker Loop", .text = linker_loop_text },
++};
++
++/// Wins per rider name. The map owns its keys: each is a copy, freed by `freeStandings`.
++const Standings = std.StringHashMapUnmanaged(u32);
++
++/// One more win for `name`.
++fn recordWin(gpa: std.mem.Allocator, standings: *Standings, name: []const u8) !void {
++    if (standings.getPtr(name)) |wins| {
++        wins.* += 1; // a name we've seen: change its count where it is
++        return;
++    }
++    const key = try gpa.dupe(u8, name); // a name we haven't: the map gets its own copy
++    errdefer gpa.free(key);
++    try standings.put(gpa, key, 1);
++}
++
++/// Frees every key the standings own, then the map itself.
++fn freeStandings(gpa: std.mem.Allocator, standings: *Standings) void {
++    var keys = standings.keyIterator();
++    while (keys.next()) |key| gpa.free(key.*);
++    standings.deinit(gpa);
++}
++
++/// One line of the standings table.
++const Row = struct {
++    name: []const u8,
++    wins: u32,
++
++    /// Sorting order: most wins first, then by name.
++    fn before(_: void, a: Row, b: Row) bool {
++        if (a.wins != b.wins) return a.wins > b.wins;
++        return std.mem.lessThan(u8, a.name, b.name);
++    }
++};
++
++/// Prints the standings, most wins first. A map has no order of its own, so the rows go into a list
++/// that can be sorted.
++fn printStandings(gpa: std.mem.Allocator, w: *std.Io.Writer, standings: *const Standings) !void {
++    var rows: std.ArrayList(Row) = .empty;
++    defer rows.deinit(gpa);
++    var entries = standings.iterator();
++    while (entries.next()) |entry| try rows.append(gpa, .{ .name = entry.key_ptr.*, .wins = entry.value_ptr.* });
++    std.mem.sort(Row, rows.items, {}, Row.before);
++    try w.print("standings:\n", .{});
++    for (rows.items) |row| try w.print("  {d}  {s}\n", .{ row.wins, row.name });
++}
++
++/// Does this answer mean "yes, race again"? Anything starting with y or Y does.
++fn wantsMore(answer: ?[]const u8) bool {
++    const text = answer orelse return false;
++    return text.len > 0 and std.ascii.toLower(text[0]) == 'y';
++}
++
+ /// A word as a number: `MissingNumber` when there's no word, `BadNumber` when it isn't one.
+ fn number(word: ?[]const u8) ParseError!f64 {
+     const w = word orelse return error.MissingNumber;
+@@ -379,22 +462,18 @@ const Event = union(enum) {
+ /// A race: a course, eight riders and a clock. Everything the race loop needs, in one value.
+ const Race = struct {
+     course: Course,
+     riders: []Rider, // the field: not the race's own memory, a view of the caller's
+     clock_s: u32 = 0,
+     next_km_m: f64 = 1000, // the next kilometre marker to report
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
+     /// A race on `course` with these riders: any number, as long as there's one. The race changes them
+     /// (they move), and the caller keeps owning them.
+     fn fromField(course: Course, field: []Rider) error{NoRiders}!Race {
+         if (field.len == 0) return error.NoRiders;
+         return .{ .course = course, .riders = field };
+     }
+ 
+     /// A race on `course` with a rider in each place of `field`, at these speeds on the flat and on
+     /// climbs (riders without speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
+@@ -848,7 +927,6 @@ test "whichever allocation fails, loadField leaks nothing" {
+     try std.testing.checkAllAllocationFailures(std.testing.allocator, loadAndFree, .{roster_text});
+ }
+ 
+ test "a roster of twelve riders races" {
+     const text = roster_text ++ "\n10.0 6.0 Iterator\n9.7 6.6 Join\n10.5 5.5 Keyword\n9.9 6.1 Lambda";
+     const field = try loadField(std.testing.allocator, text);
+@@ -873,4 +951,53 @@ test "a race needs at least one rider" {
+     var none: [0]Rider = .{};
+     try std.testing.expectError(error.NoRiders, Race.fromField(test_course, &none));
+ }
++
++test "two wins for the same name count two" {
++    const gpa = std.testing.allocator;
++    var standings: Standings = .empty;
++    defer freeStandings(gpa, &standings);
++    try recordWin(gpa, &standings, "Heap");
++    try recordWin(gpa, &standings, "Heap");
++    try std.testing.expectEqual(@as(?u32, 2), standings.get("Heap"));
++}
++
++test "a name with no wins isn't in the standings" {
++    const gpa = std.testing.allocator;
++    var standings: Standings = .empty;
++    defer freeStandings(gpa, &standings);
++    try recordWin(gpa, &standings, "Heap");
++    try std.testing.expectEqual(@as(?u32, null), standings.get("Buffer"));
++}
++
++test "the standings keep their own copy of each name" {
++    const gpa = std.testing.allocator;
++    var standings: Standings = .empty;
++    defer freeStandings(gpa, &standings);
++    var line = "Heap".*; // a name in a buffer that gets reused, like a field freed after its race
++    try recordWin(gpa, &standings, &line);
++    line = "Junk".*;
++    try std.testing.expectEqual(@as(?u32, 1), standings.get("Heap"));
++}
++
++test "the standings print most wins first" {
++    const gpa = std.testing.allocator;
++    var standings: Standings = .empty;
++    defer freeStandings(gpa, &standings);
++    try recordWin(gpa, &standings, "Buffer");
++    try recordWin(gpa, &standings, "Heap");
++    try recordWin(gpa, &standings, "Heap");
++    var buf: [128]u8 = undefined;
++    var w: std.Io.Writer = .fixed(&buf);
++    try printStandings(gpa, &w, &standings);
++    try std.testing.expectEqualStrings("standings:\n  2  Heap\n  1  Buffer\n", w.buffered());
++}
++
++test "yes means race again" {
++    try std.testing.expect(wantsMore("y"));
++    try std.testing.expect(wantsMore("Yes"));
++    try std.testing.expect(!wantsMore("n"));
++    try std.testing.expect(!wantsMore(""));
++    try std.testing.expect(!wantsMore(null));
++}
