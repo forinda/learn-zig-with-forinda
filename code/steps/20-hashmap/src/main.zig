@@ -179,7 +179,14 @@ fn raceCard(w: *std.Io.Writer) !void {
 fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]const u8 {
     try out.print("{s}", .{question});
     try out.flush(); // the question must be on screen before we wait for the answer
-    const line = try in.takeDelimiter('\n') orelse {
+    const line = in.takeDelimiter('\n') catch |e| switch (e) {
+        error.StreamTooLong => {
+            // Throw away the rest of that line, so the next question reads the next line, not its end.
+            _ = in.discardDelimiterInclusive('\n') catch 0;
+            return e;
+        },
+        else => return e,
+    } orelse {
         try out.print("\n", .{}); // nobody typed Enter, so end the question's line ourselves
         return null;
     };
@@ -857,6 +864,15 @@ test "an answer is trimmed of spaces and a Windows \\r" {
     const answer = try askLine(&in, &out, "Which rider? ");
     try std.testing.expectEqualStrings("c", answer.?);
     try std.testing.expectEqualStrings("Which rider? ", out.buffered());
+}
+
+test "after an answer too long, the next question reads the next line" {
+    var small: [8]u8 = undefined; // a reader with an 8-byte buffer, like stdin's 64, only smaller
+    var reader: std.testing.Reader = .init(&small, &.{.{ .buffer = "far too long an answer\nb\n" }});
+    var buf: [128]u8 = undefined;
+    var out: std.Io.Writer = .fixed(&buf);
+    try std.testing.expectError(error.StreamTooLong, askLine(&reader.interface, &out, "? "));
+    try std.testing.expectEqualStrings("b", (try askLine(&reader.interface, &out, "? ")).?);
 }
 
 test "no input at all is no answer" {

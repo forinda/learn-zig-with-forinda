@@ -121,35 +121,35 @@ diff --git src/main.zig src/main.zig
  
      // ...and flush sends what's in the buffer to the screen.
      try out.flush();
-@@ -291,7 +308,6 @@ const compile_pass_text =
+@@ -298,7 +315,6 @@ const compile_pass_text =
  const ParseError = error{ UnknownTerrain, MissingNumber, BadNumber, OutOfMemory };
  
  /// Reads a course from `text` into `buf`. Returns the course, or an error saying what was wrong with the text.
  fn parseCourse(gpa: std.mem.Allocator, name: []const u8, text: []const u8) ParseError!Course {
      var segments: std.ArrayList(Segment) = .empty; // starts with no memory, grows as segments are added
      errdefer segments.deinit(gpa);
-@@ -313,7 +329,6 @@ fn parseCourse(gpa: std.mem.Allocator, name: []const u8, text: []const u8) Parse
+@@ -320,7 +336,6 @@ fn parseCourse(gpa: std.mem.Allocator, name: []const u8, text: []const u8) Parse
      // The list's memory becomes the course's: the caller frees `course.segments`.
      return .{ .name = name, .distance_m = start_m, .segments = try segments.toOwnedSlice(gpa) };
  }
  
  /// The field as text, one rider a line: speed on the flat, speed on a climb (m/s), and its name.
  /// Rider A is the first line, B the second, and so on.
-@@ -332,7 +347,6 @@ const roster_text =
+@@ -339,7 +354,6 @@ const roster_text =
  const RosterError = ParseError || error{ MissingName, OutOfMemory };
  
  /// Loads the riders in `text`. Allocates the field and each rider's name: free it all with `freeField`.
  fn loadField(gpa: std.mem.Allocator, text: []const u8) RosterError![]Rider {
      var field: std.ArrayList(Rider) = .empty; // grows one rider at a time: no need to count first
      errdefer field.deinit(gpa); // only if we return an error: on success the caller owns the riders
-@@ -356,7 +370,6 @@ fn loadField(gpa: std.mem.Allocator, text: []const u8) RosterError![]Rider {
+@@ -363,7 +377,6 @@ fn loadField(gpa: std.mem.Allocator, text: []const u8) RosterError![]Rider {
      }
      return field.toOwnedSlice(gpa); // the list's memory, exactly as long as the field, now the caller's
  }
  
  /// Frees what `loadField` allocated: each name, then the field.
  fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
-@@ -364,6 +377,74 @@ fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
+@@ -371,6 +384,74 @@ fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
      gpa.free(field);
  }
  
@@ -220,7 +220,7 @@ diff --git src/main.zig src/main.zig
  /// A word as a number: `MissingNumber` when there's no word, `BadNumber` when it isn't one.
  fn number(word: ?[]const u8) ParseError!f64 {
      const w = word orelse return error.MissingNumber;
-@@ -381,24 +462,19 @@ const Event = union(enum) {
+@@ -388,24 +469,19 @@ const Event = union(enum) {
  /// A race: a course, eight riders and a clock. Everything the race loop needs, in one value.
  const Race = struct {
      course: Course,
@@ -240,7 +240,7 @@ diff --git src/main.zig src/main.zig
      /// A race on `course` with a rider in each place of `field`, at these speeds on the flat and on
      /// climbs (riders without speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
      fn init(field: []Rider, course: Course, speeds_mps: []const f64, climbs_mps: []const f64) Race {
-@@ -409,9 +485,7 @@ const Race = struct {
+@@ -416,9 +492,7 @@ const Race = struct {
          }
          return .{ .course = course, .riders = field };
      }
@@ -248,21 +248,21 @@ diff --git src/main.zig src/main.zig
      /// One tick of the clock: everyone moves on at its own speed for the terrain under its wheels.
      /// Returns what happened, written into `events` (the caller's buffer; a slice of it comes back).
      fn step(self: *Race, events: []Event) []Event {
-@@ -444,7 +518,6 @@ const Race = struct {
+@@ -451,7 +525,6 @@ const Race = struct {
          }
          return events[0..n];
      }
  
      /// Which rider is furthest along.
      fn leader(self: *const Race) usize {
-@@ -854,7 +927,6 @@ test "whichever allocation fails, loadField leaks nothing" {
+@@ -870,7 +943,6 @@ test "whichever allocation fails, loadField leaks nothing" {
      try std.testing.checkAllAllocationFailures(std.testing.allocator, loadAndFree, .{roster_text});
  }
  
  test "a roster of twelve riders races" {
      const text = roster_text ++ "\n10.0 6.0 Iterator\n9.7 6.6 Join\n10.5 5.5 Keyword\n9.9 6.1 Lambda";
      const field = try loadField(std.testing.allocator, text);
-@@ -879,4 +951,53 @@ test "a race needs at least one rider" {
+@@ -895,4 +967,53 @@ test "a race needs at least one rider" {
      var none: [0]Rider = .{};
      try std.testing.expectError(error.NoRiders, Race.fromField(test_course, &none));
  }

@@ -55,7 +55,7 @@ diff --git src/main.zig src/main.zig
  /// Prints `question`, then reads one line of the answer, without the spaces or `\r` around it.
  /// `null` when there's nothing more to read (the input ended); `error.StreamTooLong` when the line
  /// doesn't fit in the reader's buffer.
-@@ -153,6 +159,25 @@ fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]co
+@@ -160,6 +166,25 @@ fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]co
      return std.mem.trim(u8, line, " \t\r");
  }
  
@@ -79,35 +79,35 @@ diff --git src/main.zig src/main.zig
  /// The rider letter in an answer: one letter A to H, either case. Anything else means rider A.
  fn pickRider(answer: ?[]const u8) u8 {
      const text = answer orelse return 'A';
-@@ -160,7 +185,6 @@ fn pickRider(answer: ?[]const u8) u8 {
+@@ -167,7 +192,6 @@ fn pickRider(answer: ?[]const u8) u8 {
      const letter = std.ascii.toUpper(text[0]);
      return if (letter >= 'A' and letter <= 'H') letter else 'A';
  }
  
  /// Where a rider is after `dt` seconds more at `speed_mps`.
  fn advance_m(position_m: f64, speed_mps: f64, dt: f64) f64 {
-@@ -388,7 +412,6 @@ fn riderName(i: usize) u8 {
+@@ -395,7 +419,6 @@ fn riderName(i: usize) u8 {
      return 'A' + @as(u8, @intCast(i));
  }
  
  /// Draws the road into `buf`: dashes, with each rider's letter where it is along the course. Returns the line.
  fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64, you: usize) []const u8 {
      @memset(buf, '-');
-@@ -404,7 +427,6 @@ fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64, you: usize) []cons
+@@ -411,7 +434,6 @@ fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64, you: usize) []cons
      buf[columnOf(field[first].position_m, distance_m, last)] = field[first].name;
      return buf;
  }
  
  /// The column (0 to `last`) for a rider at `position_m` of `distance_m`.
  fn columnOf(position_m: f64, distance_m: f64, last: f64) usize {
-@@ -669,7 +691,6 @@ test "too many segments for the buffer is an error" {
+@@ -676,7 +698,6 @@ test "too many segments for the buffer is an error" {
      try std.testing.expectError(error.TooManySegments, parseCourse("x", "flat 10\nflat 10", &buf));
  }
  
  test "the player picks a rider by letter, either case" {
      try std.testing.expectEqual(@as(u8, 'B'), pickRider("b"));
      try std.testing.expectEqual(@as(u8, 'H'), pickRider("H"));
-@@ -704,4 +725,35 @@ test "the road shows you, whichever rider you are" {
+@@ -720,4 +741,35 @@ test "the road shows you, whichever rider you are" {
      const line = drawRoad(&road, ridersAt(&buf, &.{ 10.5, 10, 90 }), 100, 1); // A and B share column 0; you are B
      try std.testing.expectEqual(@as(u8, 'B'), line[0]);
  }

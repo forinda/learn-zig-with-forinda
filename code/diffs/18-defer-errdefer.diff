@@ -57,21 +57,21 @@ diff --git src/main.zig src/main.zig
      // ...and `if` with a capture runs only when there is one.
      // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
      if (race.riderNamed(you)) |rider| {
-@@ -159,7 +170,6 @@ fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]co
+@@ -166,7 +177,6 @@ fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]co
      return std.mem.trim(u8, line, " \t\r");
  }
  
  /// Like `askLine`, but the answer can be any length: it's collected in memory from `gpa`, which grows as
  /// needed. The caller owns the answer and frees it with `gpa.free`. `null` when the input has ended.
  fn askLineAlloc(gpa: std.mem.Allocator, in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]u8 {
-@@ -176,7 +186,6 @@ fn askLineAlloc(gpa: std.mem.Allocator, in: *std.Io.Reader, out: *std.Io.Writer,
+@@ -183,7 +193,6 @@ fn askLineAlloc(gpa: std.mem.Allocator, in: *std.Io.Reader, out: *std.Io.Writer,
      }
      return try gpa.dupe(u8, std.mem.trim(u8, line.written(), " \t\r"));
  }
  
  /// The rider letter in an answer: one letter A to H, either case. Anything else means rider A.
  fn pickRider(answer: ?[]const u8) u8 {
-@@ -305,6 +314,58 @@ fn parseCourse(name: []const u8, text: []const u8, buf: []Segment) ParseError!Co
+@@ -312,6 +321,58 @@ fn parseCourse(name: []const u8, text: []const u8, buf: []Segment) ParseError!Co
      return .{ .name = name, .distance_m = start_m, .segments = buf[0..n] };
  }
  
@@ -128,7 +128,7 @@ diff --git src/main.zig src/main.zig
  /// A word as a number: `MissingNumber` when there's no word, `BadNumber` when it isn't one.
  fn number(word: ?[]const u8) ParseError!f64 {
      const w = word orelse return error.MissingNumber;
-@@ -328,6 +389,17 @@ const Race = struct {
+@@ -335,6 +396,17 @@ const Race = struct {
      last_leader: usize = 0, // who led after the last step
      winner: ?u8 = null, // nobody yet: an optional is a value or null
  
@@ -144,14 +144,14 @@ diff --git src/main.zig src/main.zig
      /// A race on `course` with riders A to H at these speeds on the flat and on climbs (riders without
      /// speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
      fn init(course: Course, speeds_mps: []const f64, climbs_mps: []const f64) Race {
-@@ -726,7 +798,6 @@ test "the road shows you, whichever rider you are" {
+@@ -742,7 +814,6 @@ test "the road shows you, whichever rider you are" {
      try std.testing.expectEqual(@as(u8, 'B'), line[0]);
  }
  
  test "a name of any length comes back whole" {
      var long: [211]u8 = @splat('a'); // 210 letters and a newline: more than any fixed buffer we'd pick
      long[210] = '\n';
-@@ -756,4 +827,36 @@ test "no input is no name, and nothing to free" {
+@@ -772,4 +843,36 @@ test "no input is no name, and nothing to free" {
      var out: std.Io.Writer = .fixed(&buf);
      try std.testing.expect(try askLineAlloc(std.testing.allocator, &in, &out, "Your name? ") == null);
  }

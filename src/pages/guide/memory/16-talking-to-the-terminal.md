@@ -79,6 +79,18 @@ It has three answers, and the type says so: `error{ReadFailed, StreamTooLong}!?[
 The line is a slice of the reader's buffer: it's only good until the next read, which reuses that memory. Keep
 something from it by copying it (next page).
 
+### A line too long is still waiting
+
+`StreamTooLong` doesn't consume the line: the bytes that didn't fit are still in the stream, and the next read
+gets the rest of that line instead of the next answer. If you carry on after the error, throw the rest away:
+
+```zig
+_ = in.discardDelimiterInclusive('\n') catch 0; // up to and including the newline
+```
+
+Skip it, and a player who pastes something long and then answers "y" to the next question finds the game read
+the end of the paste instead.
+
 ### Clean up what was typed
 
 People type spaces around answers, and a Windows terminal ends lines with `\r\n`, so the line still has a `\r` on

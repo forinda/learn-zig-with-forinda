@@ -65,14 +65,14 @@ diff --git src/main.zig src/main.zig
          try printStandings(gpa, out, &standings);
          const again = askLine(in, out, "Race again? (y/n) ") catch |e| switch (e) {
              error.StreamTooLong => null, // an answer that long isn't "y"
-@@ -377,7 +329,6 @@ fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
+@@ -384,7 +336,6 @@ fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
      gpa.free(field);
  }
  
  /// A second course, flatter: the riders who are fastest on the flat should do better here.
  const linker_loop_text =
      \\flat 5000
-@@ -386,13 +337,69 @@ const linker_loop_text =
+@@ -393,13 +344,69 @@ const linker_loop_text =
  ;
  
  /// The courses, raced in turn.
@@ -139,21 +139,21 @@ diff --git src/main.zig src/main.zig
  /// Wins per rider name. The map owns its keys: each is a copy, freed by `freeStandings`.
  const Standings = std.StringHashMapUnmanaged(u32);
  
-@@ -443,7 +450,6 @@ fn wantsMore(answer: ?[]const u8) bool {
+@@ -450,7 +457,6 @@ fn wantsMore(answer: ?[]const u8) bool {
      const text = answer orelse return false;
      return text.len > 0 and std.ascii.toLower(text[0]) == 'y';
  }
  
  /// A word as a number: `MissingNumber` when there's no word, `BadNumber` when it isn't one.
  fn number(word: ?[]const u8) ParseError!f64 {
-@@ -952,7 +958,6 @@ test "a race needs at least one rider" {
+@@ -968,7 +974,6 @@ test "a race needs at least one rider" {
      try std.testing.expectError(error.NoRiders, Race.fromField(test_course, &none));
  }
  
  test "two wins for the same name count two" {
      const gpa = std.testing.allocator;
      var standings: Standings = .empty;
-@@ -1000,4 +1005,17 @@ test "yes means race again" {
+@@ -1016,4 +1021,17 @@ test "yes means race again" {
      try std.testing.expect(!wantsMore(""));
      try std.testing.expect(!wantsMore(null));
  }
