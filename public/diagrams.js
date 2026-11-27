@@ -12,7 +12,8 @@ async function render() {
   blocks.forEach((b) => b.setAttribute('data-rendered', ''))
   if (!mermaid) {
     mermaid = (await import(MERMAID)).default
-    mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' })
+    // the site's text font and a readable size (mermaid's default is small once a diagram is scaled to the column)
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict', themeVariables: { fontSize: '16px', fontFamily: "'Geist Variable', ui-sans-serif, system-ui, sans-serif" } })
   }
   for (const block of blocks) {
     const text = block.querySelector('code')?.textContent ?? ''

@@ -22,6 +22,7 @@ export const parts: Part[] = [
     slug: 'basics',
     title: 'Basics',
     summary: 'Values, types, decisions, loops, functions, arrays, slices and text: a rider moving along a road.',
+    art: '/art/agama-road.svg',
     competencies: [
       'I can store values in constants and variables of the right type',
       'I can make decisions and repeat work with if, while and for',

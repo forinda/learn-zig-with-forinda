@@ -1,6 +1,6 @@
 ---
 title: "A broken lesson"
-description: "Breaks every page rule, so the rules can be seen to work."
+description: "Breaks every lesson rule, so the rules can be seen to work."
 group: "Basics"
 order: 1
 layout: /src/layouts/lesson.tscl
@@ -12,13 +12,20 @@ competency: "I can do something no part lists"
 
 # A broken lesson
 
-## Engage
+No link to its guide page.
 
-Hook.
+## Recall
 
-## Explain
+::: quiz One quiz only?
+- [x] Yes
+- [ ] No
 
-Out of order, and no Explore.
+Only one.
+:::
+
+## Build it
+
+No test command, no exercise.
 
 ```zig
 const a = 1;
@@ -38,11 +45,3 @@ const n = 14;
 const o = 15;
 const p = 16;
 ```
-
-## Elaborate
-
-Build.
-
-## Evaluate
-
-No quiz, no test command, no exercise.
