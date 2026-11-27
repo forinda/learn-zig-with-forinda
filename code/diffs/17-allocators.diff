@@ -1,0 +1,143 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -46,7 +46,6 @@ pub fn main(init: std.process.Init) !void {
+     var stdout: std.Io.File.Writer = .init(.stdout(), init.io, &buffer);
+     const out = &stdout.interface;
+ 
+     // What the player types comes in through a reader, with its own buffer: one answer at a time.
+     var in_buffer: [64]u8 = undefined;
+     var stdin: std.Io.File.Reader = .init(.stdin(), init.io, &in_buffer);
+@@ -55,11 +54,18 @@ pub fn main(init: std.process.Init) !void {
+     var err_buffer: [256]u8 = undefined;
+     var stderr: std.Io.File.Writer = .init(.stderr(), init.io, &err_buffer);
+     const err = &stderr.interface;
+ 
+     try raceCard(out);
+ 
++    // The player's name can be any length, so it can't live in a fixed buffer: it's allocated, and
++    // whoever allocates frees. `init.gpa` is the program's general-purpose allocator.
++    const gpa = init.gpa;
++    const typed_name = try askLineAlloc(gpa, in, out, "Your name? ");
++    defer if (typed_name) |n| gpa.free(n); // runs when main ends, however it ends
++    const player = if (typed_name) |n| (if (n.len > 0) n else "Player") else "Player";
++
+     // Which rider is the player? No answer (or one too long for the buffer) means rider A.
+     const answer = askLine(in, out, "Which rider are you (A-H)? ") catch |e| switch (e) {
+         error.StreamTooLong => blk: {
+@@ -71,7 +77,10 @@ pub fn main(init: std.process.Init) !void {
+     };
+     const you = pickRider(answer);
+     const you_index: usize = you - 'A';
++    // Positional arguments: {0s} is the first value, used twice; {1c} the second.
++    try out.print("Good luck, {0s}! {0s} rides as {1c} today.\n", .{ player, you });
+ 
+     // The road decides how fast you go.
+     try out.print("flat road:  {d:.0} m/s\n", .{speedFor(Terrain.of(0))});
+@@ -105,7 +114,6 @@ pub fn main(init: std.process.Init) !void {
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     try out.print("winner: {c}\n", .{race.winner orelse '?'});
+     // ...and `if` with a capture runs only when there is one.
+     // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
+     if (race.riderNamed(you)) |rider| {
+         if (rider.finished(race.course.distance_m)) {
+@@ -117,7 +125,6 @@ pub fn main(init: std.process.Init) !void {
+             });
+         }
+     }
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+@@ -139,7 +146,6 @@ fn raceCard(w: *std.Io.Writer) !void {
+     try w.print("+------------------------------+\n", .{});
+ }
+ 
+ /// Prints `question`, then reads one line of the answer, without the spaces or `\r` around it.
+ /// `null` when there's nothing more to read (the input ended); `error.StreamTooLong` when the line
+ /// doesn't fit in the reader's buffer.
+@@ -160,6 +166,25 @@ fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]co
+     return std.mem.trim(u8, line, " \t\r");
+ }
+ 
++/// Like `askLine`, but the answer can be any length: it's collected in memory from `gpa`, which grows as
++/// needed. The caller owns the answer and frees it with `gpa.free`. `null` when the input has ended.
++fn askLineAlloc(gpa: std.mem.Allocator, in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]u8 {
++    try out.print("{s}", .{question});
++    try out.flush();
++    var line: std.Io.Writer.Allocating = .init(gpa);
++    defer line.deinit(); // the growing buffer goes, whatever happens; the answer is a copy
++    const n = try in.streamDelimiterEnding(&line.writer, '\n');
++    if (in.bufferedLen() > 0) {
++        in.toss(1); // the '\n' that ended the line
++    } else if (n == 0) {
++        try out.print("\n", .{});
++        return null; // the input ended before anything was typed
++    }
++    return try gpa.dupe(u8, std.mem.trim(u8, line.written(), " \t\r"));
++}
++
+ /// The rider letter in an answer: one letter A to H, either case. Anything else means rider A.
+ fn pickRider(answer: ?[]const u8) u8 {
+     const text = answer orelse return 'A';
+@@ -167,7 +192,6 @@ fn pickRider(answer: ?[]const u8) u8 {
+     const letter = std.ascii.toUpper(text[0]);
+     return if (letter >= 'A' and letter <= 'H') letter else 'A';
+ }
+ 
+ /// Where a rider is after `dt` seconds more at `speed_mps`.
+ fn advance_m(position_m: f64, speed_mps: f64, dt: f64) f64 {
+@@ -395,7 +419,6 @@ fn riderName(i: usize) u8 {
+     return 'A' + @as(u8, @intCast(i));
+ }
+ 
+ /// Draws the road into `buf`: dashes, with each rider's letter where it is along the course. Returns the line.
+ fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64, you: usize) []const u8 {
+     @memset(buf, '-');
+@@ -411,7 +434,6 @@ fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64, you: usize) []cons
+     buf[columnOf(field[first].position_m, distance_m, last)] = field[first].name;
+     return buf;
+ }
+ 
+ /// The column (0 to `last`) for a rider at `position_m` of `distance_m`.
+ fn columnOf(position_m: f64, distance_m: f64, last: f64) usize {
+@@ -676,7 +698,6 @@ test "too many segments for the buffer is an error" {
+     try std.testing.expectError(error.TooManySegments, parseCourse("x", "flat 10\nflat 10", &buf));
+ }
+ 
+ test "the player picks a rider by letter, either case" {
+     try std.testing.expectEqual(@as(u8, 'B'), pickRider("b"));
+     try std.testing.expectEqual(@as(u8, 'H'), pickRider("H"));
+@@ -720,4 +741,35 @@ test "the road shows you, whichever rider you are" {
+     const line = drawRoad(&road, ridersAt(&buf, &.{ 10.5, 10, 90 }), 100, 1); // A and B share column 0; you are B
+     try std.testing.expectEqual(@as(u8, 'B'), line[0]);
+ }
++
++test "a name of any length comes back whole" {
++    var long: [211]u8 = @splat('a'); // 210 letters and a newline: more than any fixed buffer we'd pick
++    long[210] = '\n';
++    var in: std.Io.Reader = .fixed(&long);
++    var buf: [64]u8 = undefined;
++    var out: std.Io.Writer = .fixed(&buf);
++    const name = (try askLineAlloc(std.testing.allocator, &in, &out, "Your name? ")).?;
++    defer std.testing.allocator.free(name);
++    try std.testing.expectEqual(@as(usize, 210), name.len);
++}
++
++test "a name is trimmed, and the last line counts without a newline" {
++    var in: std.Io.Reader = .fixed("  Ada Lovelace \r\nGrace");
++    var buf: [64]u8 = undefined;
++    var out: std.Io.Writer = .fixed(&buf);
++    const first = (try askLineAlloc(std.testing.allocator, &in, &out, "? ")).?;
++    defer std.testing.allocator.free(first);
++    const second = (try askLineAlloc(std.testing.allocator, &in, &out, "? ")).?;
++    defer std.testing.allocator.free(second);
++    try std.testing.expectEqualStrings("Ada Lovelace", first);
++    try std.testing.expectEqualStrings("Grace", second);
++}
++
++test "no input is no name, and nothing to free" {
++    var in: std.Io.Reader = .fixed("");
++    var buf: [64]u8 = undefined;
++    var out: std.Io.Writer = .fixed(&buf);
++    try std.testing.expect(try askLineAlloc(std.testing.allocator, &in, &out, "Your name? ") == null);
++}

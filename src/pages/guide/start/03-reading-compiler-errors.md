@@ -109,6 +109,7 @@ std.debug.print("[{s:-<10}]\n", .{"km"});
 | `{s:<14}`, `{s:>14}`, `{s:^14}` | padded to 14: left, right, centred | |
 | `{d:5}` | numbers line up to the right by default | `   42` |
 | `{d:0>2}`, `{s:-<10}` | the character before `<`/`>`/`^` fills the space | `05`, `km--------` |
+| `{0s}`, `{[name]s}` | an argument by position or by name (see [Talking to the terminal](/guide/memory/16-talking-to-the-terminal)) | |
 
 Padding is how you draw boxes and tables that line up, as long as every value fits in its width.
 

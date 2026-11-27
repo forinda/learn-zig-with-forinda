@@ -1,0 +1,252 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -46,20 +46,43 @@ pub fn main(init: std.process.Init) !void {
+     var stdout: std.Io.File.Writer = .init(.stdout(), init.io, &buffer);
+     const out = &stdout.interface;
+ 
++    // What the player types comes in through a reader, with its own buffer: one answer at a time.
++    var in_buffer: [64]u8 = undefined;
++    var stdin: std.Io.File.Reader = .init(.stdin(), init.io, &in_buffer);
++    const in = &stdin.interface;
++    // Problems go to stderr, not stdout: the race is the program's output, a note about your answer isn't.
++    var err_buffer: [256]u8 = undefined;
++    var stderr: std.Io.File.Writer = .init(.stderr(), init.io, &err_buffer);
++    const err = &stderr.interface;
++
+     try raceCard(out);
+ 
++    // Which rider is the player? No answer (or one too long for the buffer) means rider A.
++    const answer = askLine(in, out, "Which rider are you (A-H)? ") catch |e| switch (e) {
++        error.StreamTooLong => blk: {
++            try err.print("note: that answer is too long for {d} bytes; you're rider A\n", .{in_buffer.len});
++            try err.flush();
++            break :blk null;
++        },
++        else => return e,
++    };
++    const you = pickRider(answer);
++    const you_index: usize = you - 'A';
++
+     // The road decides how fast you go.
+     try out.print("flat road:  {d:.0} m/s\n", .{speedFor(Terrain.of(0))});
+     try out.print("5% climb:   {d:.0} m/s\n", .{speedFor(Terrain.of(5))});
+     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(Terrain.of(-5))});
+ 
+     // The race is one value: the loop steps it and prints what it says happened.
+     // The course comes from text now. Reading it can fail, so `try`: if the text is wrong, main stops with the error.
+     var segments: [16]Segment = undefined;
+     const course = try parseCourse(course_name, compile_pass_text, &segments);
+     var race = Race.init(course, &field_speeds_mps, &field_climb_mps);
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     while (!race.done()) {
+@@ -68,7 +91,7 @@ pub fn main(init: std.process.Init) !void {
+                 try out.print("km {d} at ", .{km});
+                 try printTime(out, race.clock_s);
+                 try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
+-                try out.print("  {s}\n", .{drawRoad(&road, &race.riders, race.course.distance_m)});
++                try out.print("  {s}\n", .{drawRoad(&road, &race.riders, race.course.distance_m, you_index)});
+             },
+             .new_leader => |name| try out.print("  {c} takes the lead\n", .{name}),
+             .finished => |name| {
+@@ -82,9 +105,19 @@ pub fn main(init: std.process.Init) !void {
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     try out.print("winner: {c}\n", .{race.winner orelse '?'});
+     // ...and `if` with a capture runs only when there is one.
+-    if (race.riderNamed('A')) |you| {
+-        try out.print("you (A) were {d:.0} m from the line\n", .{race.course.distance_m - you.position_m});
++    // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
++    if (race.riderNamed(you)) |rider| {
++        if (rider.finished(race.course.distance_m)) {
++            try out.print("you ({[name]c}) crossed the line!\n", .{ .name = rider.name });
++        } else {
++            try out.print("you ({[name]c}) were {[gap]d:.0} m from the line\n", .{
++                .name = rider.name,
++                .gap = race.course.distance_m - rider.position_m,
++            });
++        }
+     }
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+@@ -106,6 +139,36 @@ fn raceCard(w: *std.Io.Writer) !void {
+     try w.print("+------------------------------+\n", .{});
+ }
+ 
++/// Prints `question`, then reads one line of the answer, without the spaces or `\r` around it.
++/// `null` when there's nothing more to read (the input ended); `error.StreamTooLong` when the line
++/// doesn't fit in the reader's buffer.
++fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]const u8 {
++    try out.print("{s}", .{question});
++    try out.flush(); // the question must be on screen before we wait for the answer
++    const line = in.takeDelimiter('\n') catch |e| switch (e) {
++        error.StreamTooLong => {
++            // Throw away the rest of that line, so the next question reads the next line, not its end.
++            _ = in.discardDelimiterInclusive('\n') catch 0;
++            return e;
++        },
++        else => return e,
++    } orelse {
++        try out.print("\n", .{}); // nobody typed Enter, so end the question's line ourselves
++        return null;
++    };
++    return std.mem.trim(u8, line, " \t\r");
++}
++
++/// The rider letter in an answer: one letter A to H, either case. Anything else means rider A.
++fn pickRider(answer: ?[]const u8) u8 {
++    const text = answer orelse return 'A';
++    if (text.len != 1) return 'A';
++    const letter = std.ascii.toUpper(text[0]);
++    return if (letter >= 'A' and letter <= 'H') letter else 'A';
++}
++
+ /// Where a rider is after `dt` seconds more at `speed_mps`.
+ fn advance_m(position_m: f64, speed_mps: f64, dt: f64) f64 {
+     return position_m + speed_mps * dt;
+@@ -190,7 +253,6 @@ const compile_pass: Course = .{
+     },
+ };
+ 
+ /// Compile Pass as text, one segment a line: the terrain, its length in metres, and (for climbs and
+ /// descents) its gradient in percent. A multiline string: each line starts with `\\`.
+ const compile_pass_text =
+@@ -199,9 +261,7 @@ const compile_pass_text =
+     \\descent 2000 -6
+     \\flat 4500
+ ;
+ 
+ /// Everything that can be wrong with a course's text: an error set.
+ const ParseError = error{ UnknownTerrain, MissingNumber, BadNumber, TooManySegments };
+ 
+@@ -233,7 +293,6 @@ fn number(word: ?[]const u8) ParseError!f64 {
+     const w = word orelse return error.MissingNumber;
+     return std.fmt.parseFloat(f64, w) catch error.BadNumber; // the library's own error becomes ours
+ }
+ 
+ /// Something that happened in the race. One value, one of several kinds, each with its own data:
+ /// a tagged union. A `switch` on it says what to do with each kind.
+@@ -336,21 +395,23 @@ fn riderName(i: usize) u8 {
+     return 'A' + @as(u8, @intCast(i));
+ }
+ 
+ /// Draws the road into `buf`: dashes, with each rider's letter where it is along the course. Returns the line.
+-fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64) []const u8 {
++fn drawRoad(buf: []u8, field: []const Rider, distance_m: f64, you: usize) []const u8 {
+     @memset(buf, '-');
+     const last: f64 = @floatFromInt(buf.len - 1);
+     // Riders close together share a column, and the last letter written there is the one you see:
+-    // the rest of the field first, then the player (rider A, index 0), then the leader, so you always
++    // the rest of the field first, then you (the rider at index `you`), then the leader, so you always
+     // see the race's leader, and yourself unless you're in the leader's column.
+     const first = leaderOf(field);
+     for (field, 0..) |rider, i| {
+-        if (i != first and i != 0) buf[columnOf(rider.position_m, distance_m, last)] = rider.name;
++        if (i != first and i != you) buf[columnOf(rider.position_m, distance_m, last)] = rider.name;
+     }
+-    if (first != 0) buf[columnOf(field[0].position_m, distance_m, last)] = field[0].name;
++    if (first != you) buf[columnOf(field[you].position_m, distance_m, last)] = field[you].name;
+     buf[columnOf(field[first].position_m, distance_m, last)] = field[first].name;
+     return buf;
+ }
+ 
+ /// The column (0 to `last`) for a rider at `position_m` of `distance_m`.
+ fn columnOf(position_m: f64, distance_m: f64, last: f64) usize {
+@@ -436,21 +497,21 @@ test "the leader is the furthest along" {
+ test "a rider at the start is at column 0" {
+     var road: [8]u8 = undefined;
+     var buf: [8]Rider = undefined;
+-    const line = drawRoad(&road, ridersAt(&buf, &.{0}), 100);
++    const line = drawRoad(&road, ridersAt(&buf, &.{0}), 100, 0);
+     try std.testing.expectEqual(@as(u8, 'A'), line[0]);
+ }
+ 
+ test "a rider at the line is at the last column" {
+     var road: [8]u8 = undefined;
+     var buf: [8]Rider = undefined;
+-    const line = drawRoad(&road, ridersAt(&buf, &.{100}), 100);
++    const line = drawRoad(&road, ridersAt(&buf, &.{100}), 100, 0);
+     try std.testing.expectEqual(@as(u8, 'A'), line[7]);
+ }
+ 
+ test "two riders, two letters" {
+     var road: [8]u8 = undefined;
+     var buf: [8]Rider = undefined;
+-    const line = drawRoad(&road, ridersAt(&buf, &.{ 0, 50 }), 100);
++    const line = drawRoad(&road, ridersAt(&buf, &.{ 0, 50 }), 100, 0);
+     try std.testing.expectEqual(@as(u8, 'A'), line[0]);
+     try std.testing.expectEqual(@as(u8, 'B'), line[3]); // halfway along 8 columns (0..7): 3.5, rounded down
+     try std.testing.expectEqual(@as(u8, '-'), line[1]);
+@@ -459,14 +520,14 @@ test "two riders, two letters" {
+ test "when riders share a column, the leader's letter shows" {
+     var road: [8]u8 = undefined;
+     var buf: [8]Rider = undefined;
+-    const line = drawRoad(&road, ridersAt(&buf, &.{ 10.5, 10 }), 100); // both in column 0; A is ahead
++    const line = drawRoad(&road, ridersAt(&buf, &.{ 10.5, 10 }), 100, 0); // both in column 0; A is ahead
+     try std.testing.expectEqual(@as(u8, 'A'), line[0]);
+ }
+ 
+ test "the player (rider A) shows when the leader is elsewhere" {
+     var road: [8]u8 = undefined;
+     var buf: [8]Rider = undefined;
+-    const line = drawRoad(&road, ridersAt(&buf, &.{ 10, 10.5, 90 }), 100); // A and B share column 0; C leads
++    const line = drawRoad(&road, ridersAt(&buf, &.{ 10, 10.5, 90 }), 100, 0); // A and B share column 0; C leads
+     try std.testing.expectEqual(@as(u8, 'A'), line[0]);
+ }
+ 
+@@ -584,7 +645,6 @@ test "a known name finds that rider" {
+     try std.testing.expectEqual(@as(f64, 9), rider.speed_mps);
+ }
+ 
+ test "Compile Pass parses into four segments" {
+     var buf: [8]Segment = undefined;
+     const course = try parseCourse("Compile Pass", compile_pass_text, &buf);
+@@ -615,4 +675,49 @@ test "too many segments for the buffer is an error" {
+     var buf: [1]Segment = undefined;
+     try std.testing.expectError(error.TooManySegments, parseCourse("x", "flat 10\nflat 10", &buf));
+ }
++
++test "the player picks a rider by letter, either case" {
++    try std.testing.expectEqual(@as(u8, 'B'), pickRider("b"));
++    try std.testing.expectEqual(@as(u8, 'H'), pickRider("H"));
++}
++
++test "anything else, or no answer, makes you rider A" {
++    try std.testing.expectEqual(@as(u8, 'A'), pickRider("Z"));
++    try std.testing.expectEqual(@as(u8, 'A'), pickRider("bob"));
++    try std.testing.expectEqual(@as(u8, 'A'), pickRider(""));
++    try std.testing.expectEqual(@as(u8, 'A'), pickRider(null));
++}
++
++test "an answer is trimmed of spaces and a Windows \\r" {
++    var in: std.Io.Reader = .fixed("  c \r\nnext line\n");
++    var buf: [64]u8 = undefined;
++    var out: std.Io.Writer = .fixed(&buf);
++    const answer = try askLine(&in, &out, "Which rider? ");
++    try std.testing.expectEqualStrings("c", answer.?);
++    try std.testing.expectEqualStrings("Which rider? ", out.buffered());
++}
++
++test "after an answer too long, the next question reads the next line" {
++    var small: [8]u8 = undefined; // a reader with an 8-byte buffer, like stdin's 64, only smaller
++    var reader: std.testing.Reader = .init(&small, &.{.{ .buffer = "far too long an answer\nb\n" }});
++    var buf: [128]u8 = undefined;
++    var out: std.Io.Writer = .fixed(&buf);
++    try std.testing.expectError(error.StreamTooLong, askLine(&reader.interface, &out, "? "));
++    try std.testing.expectEqualStrings("b", (try askLine(&reader.interface, &out, "? ")).?);
++}
++
++test "no input at all is no answer" {
++    var in: std.Io.Reader = .fixed("");
++    var buf: [64]u8 = undefined;
++    var out: std.Io.Writer = .fixed(&buf);
++    try std.testing.expect(try askLine(&in, &out, "Which rider? ") == null);
++}
++
++test "the road shows you, whichever rider you are" {
++    var road: [8]u8 = undefined;
++    var buf: [8]Rider = undefined;
++    const line = drawRoad(&road, ridersAt(&buf, &.{ 10.5, 10, 90 }), 100, 1); // A and B share column 0; you are B
++    try std.testing.expectEqual(@as(u8, 'B'), line[0]);
++}

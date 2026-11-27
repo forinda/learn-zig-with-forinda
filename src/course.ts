@@ -44,8 +44,10 @@ export const parts: Part[] = [
   {
     slug: 'memory',
     title: 'Memory',
-    summary: 'The stack and the heap, allocators, defer and errdefer: a field of riders that grows at runtime.',
+    summary: 'Talking to the terminal, the stack and the heap, allocators, defer and errdefer, lists and maps: a game that listens, with a field that grows.',
+    art: '/art/agama-memory.svg',
     competencies: [
+      'I can read what the player types and write to stdout and stderr',
       'I can choose between the stack and an allocator',
       'I can free what I allocate with defer and errdefer',
       'I can find a memory leak with a test',

@@ -1,0 +1,188 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -19,6 +19,9 @@ const Rider = struct {
+     speed_mps: f64,
+     climb_mps: f64 = 6.0, // its speed on a climb
+     position_m: f64 = 0, // a default: every rider starts at the line
++    full_name: []const u8 = "", // its name on the roster (owned by whoever loaded the roster)
+ 
+     /// Moves this rider on by `dt` seconds. It changes the rider, so it takes `*Rider`.
+     fn advance(self: *Rider, dt: f64) void {
+@@ -57,14 +60,12 @@ pub fn main(init: std.process.Init) !void {
+ 
+     try raceCard(out);
+ 
+     // The player's name can be any length, so it can't live in a fixed buffer: it's allocated, and
+     // whoever allocates frees. `init.gpa` is the program's general-purpose allocator.
+     const gpa = init.gpa;
+     const typed_name = try askLineAlloc(gpa, in, out, "Your name? ");
+     defer if (typed_name) |n| gpa.free(n); // runs when main ends, however it ends
+     const player = if (typed_name) |n| (if (n.len > 0) n else "Player") else "Player";
+ 
+     // Which rider is the player? No answer (or one too long for the buffer) means rider A.
+     const answer = askLine(in, out, "Which rider are you (A-H)? ") catch |e| switch (e) {
+@@ -77,10 +78,8 @@ pub fn main(init: std.process.Init) !void {
+     };
+     const you = pickRider(answer);
+     const you_index: usize = you - 'A';
+     // Positional arguments: {0s} is the first value, used twice; {1c} the second.
+     try out.print("Good luck, {0s}! {0s} rides as {1c} today.\n", .{ player, you });
+ 
+     // The road decides how fast you go.
+     try out.print("flat road:  {d:.0} m/s\n", .{speedFor(Terrain.of(0))});
+@@ -91,7 +90,13 @@ pub fn main(init: std.process.Init) !void {
+     // The course comes from text now. Reading it can fail, so `try`: if the text is wrong, main stops with the error.
+     var segments: [16]Segment = undefined;
+     const course = try parseCourse(course_name, compile_pass_text, &segments);
+-    var race = Race.init(course, &field_speeds_mps, &field_climb_mps);
++    // The riders come from the roster: allocated, so freed when main ends. `defer` says so right here,
++    // next to the allocation, instead of at every way out of main.
++    const field = try loadField(gpa, roster_text);
++    defer freeField(gpa, field);
++    var race = try Race.fromField(course, field);
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     while (!race.done()) {
+@@ -112,7 +117,13 @@ pub fn main(init: std.process.Init) !void {
+     }
+ 
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+-    try out.print("winner: {c}\n", .{race.winner orelse '?'});
++    if (race.winner) |w| {
++        try out.print("winner: {c} ({s})\n", .{ w, race.riderNamed(w).?.full_name });
++    } else {
++        try out.print("winner: ?\n", .{});
++    }
+     // ...and `if` with a capture runs only when there is one.
+     // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
+     if (race.riderNamed(you)) |rider| {
+@@ -166,7 +177,6 @@ fn askLine(in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]co
+     return std.mem.trim(u8, line, " \t\r");
+ }
+ 
+ /// Like `askLine`, but the answer can be any length: it's collected in memory from `gpa`, which grows as
+ /// needed. The caller owns the answer and frees it with `gpa.free`. `null` when the input has ended.
+ fn askLineAlloc(gpa: std.mem.Allocator, in: *std.Io.Reader, out: *std.Io.Writer, question: []const u8) !?[]u8 {
+@@ -183,7 +193,6 @@ fn askLineAlloc(gpa: std.mem.Allocator, in: *std.Io.Reader, out: *std.Io.Writer,
+     }
+     return try gpa.dupe(u8, std.mem.trim(u8, line.written(), " \t\r"));
+ }
+ 
+ /// The rider letter in an answer: one letter A to H, either case. Anything else means rider A.
+ fn pickRider(answer: ?[]const u8) u8 {
+@@ -312,6 +321,58 @@ fn parseCourse(name: []const u8, text: []const u8, buf: []Segment) ParseError!Co
+     return .{ .name = name, .distance_m = start_m, .segments = buf[0..n] };
+ }
+ 
++/// The field as text, one rider a line: speed on the flat, speed on a climb (m/s), and its name.
++/// Rider A is the first line, B the second, and so on.
++const roster_text =
++    \\10.0 6.2 Alloc
++    \\10.4 5.6 Buffer
++    \\9.8 6.4 Comptime
++    \\10.1 6.0 Defer
++    \\9.6 6.8 Errdefer
++    \\10.2 5.8 Flush
++    \\9.9 6.3 Generic
++    \\10.3 5.9 Heap
++;
++
++/// What can go wrong loading a roster: a bad number, a line with no name, or running out of memory.
++const RosterError = ParseError || error{ MissingName, OutOfMemory };
++
++/// Loads the riders in `text`. Allocates the field and each rider's name: free it all with `freeField`.
++fn loadField(gpa: std.mem.Allocator, text: []const u8) RosterError![]Rider {
++    var count: usize = 0;
++    var counter = std.mem.tokenizeScalar(u8, text, '\n');
++    while (counter.next()) |_| count += 1;
++
++    const field = try gpa.alloc(Rider, count);
++    errdefer gpa.free(field); // only if we return an error: on success the caller owns the field
++    var made: usize = 0; // how many riders have a name of their own so far
++    errdefer for (field[0..made]) |rider| gpa.free(rider.full_name); // runs first: last in, first out
++
++    var lines = std.mem.tokenizeScalar(u8, text, '\n');
++    while (lines.next()) |line| : (made += 1) {
++        var words = std.mem.tokenizeScalar(u8, line, ' ');
++        const speed_mps = try number(words.next());
++        const climb_mps = try number(words.next());
++        const full_name = std.mem.trim(u8, words.rest(), " \t\r");
++        if (full_name.len == 0) return error.MissingName;
++        field[made] = .{
++            .name = riderName(made),
++            .speed_mps = speed_mps,
++            .climb_mps = climb_mps,
++            .full_name = try gpa.dupe(u8, full_name), // a copy: the field mustn't depend on `text`
++        };
++    }
++    return field;
++}
++
++/// Frees what `loadField` allocated: each name, then the field.
++fn freeField(gpa: std.mem.Allocator, field: []Rider) void {
++    for (field) |rider| gpa.free(rider.full_name);
++    gpa.free(field);
++}
++
+ /// A word as a number: `MissingNumber` when there's no word, `BadNumber` when it isn't one.
+ fn number(word: ?[]const u8) ParseError!f64 {
+     const w = word orelse return error.MissingNumber;
+@@ -335,6 +396,17 @@ const Race = struct {
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
++    /// A race on `course` with these riders (copied in). A race needs one to eight.
++    fn fromField(course: Course, field: []const Rider) error{ NoRiders, TooManyRiders }!Race {
++        if (field.len == 0) return error.NoRiders;
++        if (field.len > 8) return error.TooManyRiders;
++        var race = Race.init(course, &.{}, &.{});
++        @memcpy(race.riders[0..field.len], field);
++        return race;
++    }
++
+     /// A race on `course` with riders A to H at these speeds on the flat and on climbs (riders without
+     /// speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
+     fn init(course: Course, speeds_mps: []const f64, climbs_mps: []const f64) Race {
+@@ -742,7 +814,6 @@ test "the road shows you, whichever rider you are" {
+     try std.testing.expectEqual(@as(u8, 'B'), line[0]);
+ }
+ 
+ test "a name of any length comes back whole" {
+     var long: [211]u8 = @splat('a'); // 210 letters and a newline: more than any fixed buffer we'd pick
+     long[210] = '\n';
+@@ -772,4 +843,36 @@ test "no input is no name, and nothing to free" {
+     var out: std.Io.Writer = .fixed(&buf);
+     try std.testing.expect(try askLineAlloc(std.testing.allocator, &in, &out, "Your name? ") == null);
+ }
++
++test "the roster loads eight riders, each with a name of its own" {
++    const field = try loadField(std.testing.allocator, roster_text);
++    defer freeField(std.testing.allocator, field);
++    try std.testing.expectEqual(@as(usize, 8), field.len);
++    try std.testing.expectEqual(@as(u8, 'E'), field[4].name);
++    try std.testing.expectEqualStrings("Errdefer", field[4].full_name);
++    try std.testing.expectEqual(@as(f64, 6.8), field[4].climb_mps);
++}
++
++test "a bad line is an error, and what was made before it is freed" {
++    // std.testing.allocator fails the test if anything allocated here isn't freed.
++    try std.testing.expectError(error.BadNumber, loadField(std.testing.allocator, "10 6 Alloc\n10 x Buffer"));
++    try std.testing.expectError(error.MissingName, loadField(std.testing.allocator, "10 6 Alloc\n10 6"));
++}
++
++fn loadAndFree(gpa: std.mem.Allocator, text: []const u8) !void {
++    const field = try loadField(gpa, text);
++    freeField(gpa, field);
++}
++
++test "whichever allocation fails, loadField leaks nothing" {
++    try std.testing.checkAllAllocationFailures(std.testing.allocator, loadAndFree, .{roster_text});
++}
++
++test "a race needs one to eight riders" {
++    var none: [0]Rider = .{};
++    try std.testing.expectError(error.NoRiders, Race.fromField(test_course, &none));
++    var nine: [9]Rider = @splat(.{ .name = 'A', .speed_mps = 10 });
++    try std.testing.expectError(error.TooManyRiders, Race.fromField(test_course, &nine));
++}
