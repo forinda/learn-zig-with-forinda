@@ -17,7 +17,9 @@
       @if (part.art) {
         <img class="course-art" [src]="part.art" alt="" width="400" height="300" loading="lazy" />
       }
-      <h3><span class="course-part-no">Part {{ $index + 1 }}</span> {{ part.title }}</h3>
+      <h3>
+        <span class="course-part-no">Part {{ $index + 1 }}</span> {{ part.title }}
+      </h3>
       <p>{{ part.summary }}</p>
       <ul class="course-can">
         @for (c of part.competencies; track c) {
