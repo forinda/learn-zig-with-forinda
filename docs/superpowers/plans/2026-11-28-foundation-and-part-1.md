@@ -65,9 +65,8 @@ src/pages/learn/progress.tscl.
   package.json; vite.config.ts as dwise's plus `quiz: { tag: 'quiz', from: '@clarusjs/theme-docs/quiz.tscl' }`
   and `components: ['/src/components']`. `src/layouts/lesson.tscl` as kview's
   packages/docs/src/layouts/lesson.tscl (wraps `@clarusjs/theme-docs/lesson.tscl` with this site's theme).
-  `progress.tscl` as kview's packages/docs/src/pages/learn/progress.tscl. `.gitignore` as dwise's but WITHOUT
-  its `docs/superpowers/` and `.superpowers/` lines' first one: keep `.superpowers/` ignored, keep
-  `docs/superpowers/` tracked (this repo's spec and plans live there).
+  `progress.tscl` as kview's packages/docs/src/pages/learn/progress.tscl. `.gitignore` as dwise's except the `docs/superpowers/` line: keep
+  `.superpowers/` ignored, but track `docs/superpowers/` (this repo's spec and plans live there).
 - [ ] **Step 2:** `pnpm install && pnpm build` → Expected: build succeeds; `dist/client/index.html` exists.
 - [ ] **Step 3:** `pnpm check` → Expected: no errors.
 - [ ] **Step 4:** Commit `feat: site scaffold (clarusjs, theme-docs, learn section of 13 parts)`.
