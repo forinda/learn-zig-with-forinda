@@ -1,64 +1,98 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-labelledby="t">
-  <title id="t">Agama waving beside a terminal that says Terminal Tour</title>
+  <title id="t">Agama, the course's lizard, waving and pointing at a terminal that says Terminal Tour</title>
   <defs>
     <style>
-      .ol { stroke: #1d1a16; stroke-linecap: round; stroke-linejoin: round; }
+      .ol { stroke: #2a1d14; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+      .line { fill: none; stroke: #2a1d14; stroke-linecap: round; stroke-linejoin: round; }
     </style>
   </defs>
-  <ellipse cx="200" cy="284" rx="170" ry="9" fill="#000" opacity="0.12"/>
+  <ellipse cx="200" cy="288" rx="175" ry="8" fill="#000" opacity="0.1"/>
 
   <!-- the terminal -->
   <g>
-    <rect x="186" y="56" width="196" height="150" rx="14" fill="#1f2328" class="ol" stroke-width="6"/>
-    <path d="M186 84 h196" stroke="#1d1a16" stroke-width="5"/>
-    <circle cx="206" cy="70" r="5" fill="#ff6a2b"/>
-    <circle cx="222" cy="70" r="5" fill="#f7a41d"/>
-    <circle cx="238" cy="70" r="5" fill="#34b98a"/>
-    <text x="204" y="118" font-family="ui-monospace, monospace" font-size="15" fill="#9aa3ad">$ zig build run</text>
-    <text x="204" y="146" font-family="ui-monospace, monospace" font-size="17" font-weight="700" fill="#f7a41d">Terminal Tour</text>
-    <rect x="204" y="160" width="10" height="18" fill="#e6e6e6"/>
-    <path d="M262 206 l-10 40 h56 l-10 -40" fill="#9aa3ad" class="ol" stroke-width="6"/>
-    <path d="M232 248 h96" class="ol" stroke-width="10"/>
+    <rect x="222" y="70" width="166" height="130" rx="14" fill="#1f2328" class="ol" stroke-width="5"/>
+    <path d="M222 96 h166" stroke="#2a1d14" stroke-width="4.5"/>
+    <circle cx="240" cy="83" r="5" fill="#ff6a2b"/>
+    <circle cx="256" cy="83" r="5" fill="#f7a41d"/>
+    <circle cx="272" cy="83" r="5" fill="#34b98a"/>
+    <text x="238" y="128" font-family="ui-monospace, monospace" font-size="14" fill="#9aa3ad">$ zig build run</text>
+    <text x="238" y="154" font-family="ui-monospace, monospace" font-size="16" font-weight="700" fill="#f7a41d">Terminal Tour</text>
+    <rect x="238" y="166" width="9" height="16" fill="#e6e6e6"/>
+    <path class="ol" fill="#9aa3ad" d="M290 200 l-9 36 h48 l-9 -36"/>
+    <path class="line" stroke-width="9" d="M264 240 h84"/>
   </g>
 
-  <!-- tail curling behind -->
-  <path class="ol" d="M104 236 C70 248 40 240 34 214 C30 196 44 186 58 192" fill="none" stroke-width="22"/>
-  <path d="M104 236 C70 248 40 240 34 214 C30 196 44 186 58 192" fill="none" stroke="#2f6fe0" stroke-width="13" stroke-linecap="round"/>
-  <path d="M38 228 C34 214 36 200 46 192" fill="none" stroke="#ff6a2b" stroke-width="13" stroke-linecap="round"/>
+  <!-- tail: curling round behind, spotted, with the orange band -->
+  <path class="ol" fill="#2f6fe0" d="M78 232 C56 244 30 248 20 228 C12 210 26 194 42 198 C54 201 56 216 46 218 C40 219 38 212 42 210 L38 204 C28 208 28 222 38 228 C52 236 66 230 80 246 Z"/>
+  <path fill="#ff6a2b" d="M22 220 C18 208 26 198 38 197 L41 204 C32 206 28 214 30 222 Z"/>
+  <g fill="#1d3f8f" opacity="0.5"><circle cx="54" cy="240" r="3"/><circle cx="66" cy="238" r="2.5"/><circle cx="32" cy="232" r="2.5"/></g>
 
-  <!-- legs -->
-  <path class="ol" d="M104 226 L96 274 M134 226 L142 274" fill="none" stroke-width="24"/>
-  <path d="M104 226 L96 274 M134 226 L142 274" fill="none" stroke="#2457b8" stroke-width="14" stroke-linecap="round"/>
-  <ellipse cx="92" cy="276" rx="17" ry="8" fill="#1d3f8f" class="ol" stroke-width="5"/>
-  <ellipse cx="148" cy="276" rx="17" ry="8" fill="#1d3f8f" class="ol" stroke-width="5"/>
+  <!-- legs: bent, splayed, toes with round pads -->
+  <path class="ol" fill="#2f6fe0" d="M88 234 C70 238 56 250 54 264 C53 272 56 278 62 280 L78 280 C76 272 76 264 80 256 C84 250 90 246 96 244 Z"/>
+  <path class="ol" fill="#2f6fe0" d="M132 234 C150 238 164 250 166 264 C167 272 164 278 158 280 L142 280 C144 272 144 264 140 256 C136 250 130 246 124 244 Z"/>
+  <path fill="#2457b8" d="M60 262 C62 252 70 244 80 240 C74 248 70 256 70 266 Z" opacity="0.8"/>
+  <g class="ol" fill="#2f6fe0" stroke-width="3.5">
+    <ellipse cx="42" cy="284" rx="7" ry="5"/><ellipse cx="53" cy="289" rx="7" ry="5"/><ellipse cx="66" cy="290" rx="7" ry="5"/><ellipse cx="78" cy="286" rx="6.5" ry="5"/>
+    <ellipse cx="178" cy="284" rx="7" ry="5"/><ellipse cx="167" cy="289" rx="7" ry="5"/><ellipse cx="154" cy="290" rx="7" ry="5"/><ellipse cx="142" cy="286" rx="6.5" ry="5"/>
+  </g>
+  <ellipse cx="62" cy="281" rx="18" ry="7" fill="#2f6fe0"/>
+  <ellipse cx="158" cy="281" rx="18" ry="7" fill="#2f6fe0"/>
 
-  <!-- back crest -->
-  <path class="ol" d="M94 168 l-14 -6 l10 -10 l-14 -8 l14 -8 l-12 -12 l16 -4 l-8 -14 l18 2" fill="#1d3f8f" stroke-width="5"/>
+  <!-- pointing arm (right), at the terminal -->
+  <path class="ol" fill="#2f6fe0" d="M138 168 C154 166 172 162 190 158 L194 172 C176 176 158 180 142 184 Z"/>
+  <g class="ol" fill="#2f6fe0" stroke-width="3.5">
+    <ellipse cx="216" cy="160" rx="11" ry="4.5"/>
+    <ellipse cx="206" cy="172" rx="7" ry="4"/>
+    <circle cx="198" cy="165" r="10"/>
+  </g>
 
-  <!-- body, upright -->
-  <path class="ol" d="M90 150 C86 118 102 98 124 98 C148 98 160 120 158 152 C156 190 152 230 120 232 C94 234 92 196 90 150 Z" fill="#2f6fe0" stroke-width="6"/>
-  <path d="M132 112 C146 140 146 190 132 222" fill="none" stroke="#8fb4ff" stroke-width="8" stroke-linecap="round"/>
+  <!-- body: chubby pear, cream belly in bands, spots -->
+  <path class="ol" fill="#2f6fe0" d="M70 168 C60 200 64 240 84 258 C98 270 122 270 136 258 C156 240 160 200 150 168 C140 148 80 148 70 168 Z"/>
+  <path class="ol" fill="#f3ead2" stroke-width="3" d="M90 170 C82 198 86 236 98 250 C106 257 114 257 122 250 C134 236 138 198 130 170 C120 160 100 160 90 170 Z"/>
+  <path class="line" stroke-width="2.5" opacity="0.5" d="M90 192 C102 197 118 197 130 192 M89 212 C102 217 118 217 131 212 M92 232 C104 236 116 236 128 232"/>
+  <g fill="#1d3f8f" opacity="0.55"><circle cx="76" cy="200" r="3.5"/><circle cx="72" cy="222" r="3"/><circle cx="80" cy="244" r="3"/><circle cx="146" cy="200" r="3.5"/><circle cx="148" cy="224" r="3"/></g>
 
-  <!-- arm on the hip -->
-  <path class="ol" d="M100 132 L82 170 L100 188" fill="none" stroke-width="20"/>
-  <path d="M100 132 L82 170 L100 188" fill="none" stroke="#2f6fe0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- head -->
-  <path class="ol" d="M96 76 C94 48 116 34 140 38 C164 42 180 56 180 72 C180 88 164 94 144 94 C124 96 98 96 96 76 Z" fill="#ff6a2b" stroke-width="6"/>
-  <path d="M106 86 C124 90 148 90 170 84" fill="none" stroke="#e0521a" stroke-width="5" stroke-linecap="round"/>
-  <ellipse cx="156" cy="76" rx="8" ry="5" fill="#ffb199" opacity="0.9"/>
-  <path d="M140 82 C152 88 166 86 176 78" fill="none" stroke="#1d1a16" stroke-width="4" stroke-linecap="round"/>
-  <circle cx="136" cy="62" r="12" fill="#fff" class="ol" stroke-width="4"/>
-  <circle cx="141" cy="63" r="6" fill="#1d1a16"/>
-  <circle cx="143" cy="60" r="2" fill="#fff"/>
-  <circle cx="173" cy="64" r="2.5" fill="#1d1a16"/>
+  <!-- head: big and round, the agama's orange-red -->
+  <path class="ol" fill="#ff6a2b" d="M36 96 C34 54 70 28 110 28 C150 28 186 54 184 96 C184 122 162 142 110 144 C58 142 36 122 36 96 Z"/>
+  <!-- cheek shading and spots -->
+  <path fill="#e0521a" d="M42 110 C48 128 70 140 110 142 C80 136 58 126 48 104 Z" opacity="0.7"/>
+  <g fill="#c94512" opacity="0.6"><circle cx="96" cy="58" r="3"/><circle cx="110" cy="52" r="3.5"/><circle cx="124" cy="58" r="3"/><circle cx="104" cy="68" r="2.5"/><circle cx="118" cy="68" r="2.5"/></g>
+  <!-- wide open grin, tongue, cream chin -->
+  <path class="ol" fill="#f3ead2" stroke-width="3.5" d="M50 112 C66 132 154 132 170 112 C168 128 148 146 110 148 C72 146 52 128 50 112 Z"/>
+  <path class="ol" fill="#5a1e1a" stroke-width="3.5" d="M62 106 C82 118 138 118 158 106 C152 128 132 140 110 140 C88 140 68 128 62 106 Z"/>
+  <path fill="#e86a7a" d="M86 130 C94 120 126 120 134 130 C128 140 92 140 86 130 Z"/>
+  <!-- nostrils -->
+  <ellipse cx="102" cy="94" rx="3" ry="2.2" fill="#2a1d14"/>
+  <ellipse cx="118" cy="94" rx="3" ry="2.2" fill="#2a1d14"/>
+  <!-- big shiny eyes in raised sockets -->
+  <circle class="ol" cx="74" cy="74" r="26" fill="#ff7d45"/>
+  <circle class="ol" cx="146" cy="74" r="26" fill="#ff7d45"/>
+  <circle cx="76" cy="77" r="20" fill="#fff" stroke="#2a1d14" stroke-width="3"/>
+  <circle cx="144" cy="77" r="20" fill="#fff" stroke="#2a1d14" stroke-width="3"/>
+  <circle cx="79" cy="79" r="14" fill="#c8762a"/>
+  <circle cx="141" cy="79" r="14" fill="#c8762a"/>
+  <circle cx="80" cy="80" r="9" fill="#2a1d14"/>
+  <circle cx="140" cy="80" r="9" fill="#2a1d14"/>
+  <circle cx="85" cy="73" r="5" fill="#fff"/>
+  <circle cx="145" cy="73" r="5" fill="#fff"/>
+  <circle cx="75" cy="86" r="2.2" fill="#fff"/>
+  <circle cx="135" cy="86" r="2.2" fill="#fff"/>
 
-  <!-- helmet -->
-  <path class="ol" d="M98 62 C96 34 120 20 144 24 C166 28 178 40 176 52 C158 46 124 52 98 62 Z" fill="#f7a41d" stroke-width="6"/>
-  <path d="M116 38 l8 12 M134 30 l6 14 M152 30 l4 14" stroke="#1d1a16" stroke-width="4" stroke-linecap="round"/>
-  <!-- waving arm -->
-  <path class="ol" d="M150 126 L186 112 L200 42" fill="none" stroke-width="20"/>
-  <path d="M150 126 L186 112 L200 42" fill="none" stroke="#2f6fe0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="201" cy="36" r="10" fill="#1d3f8f" class="ol" stroke-width="5"/>
-  <path d="M216 26 q8 6 6 16 M224 14 q12 10 8 26" fill="none" stroke="#f7a41d" stroke-width="4" stroke-linecap="round"/>
+  <!-- waving arm (left), open hand with splayed fingers: in front, out beside the head -->
+  <g transform="translate(-12 6)">
+  <path class="ol" fill="#2f6fe0" d="M80 174 C64 172 50 164 42 150 C38 142 36 134 36 126 L50 124 C50 132 52 140 56 146 C62 154 72 158 84 160 Z"/>
+  <g class="ol" fill="#2f6fe0" stroke-width="3.5">
+    <ellipse cx="26" cy="104" rx="4.5" ry="8" transform="rotate(-35 26 104)"/>
+    <ellipse cx="36" cy="96" rx="4.5" ry="9" transform="rotate(-10 36 96)"/>
+    <ellipse cx="49" cy="97" rx="4.5" ry="9" transform="rotate(15 49 97)"/>
+    <ellipse cx="58" cy="108" rx="4.5" ry="8" transform="rotate(45 58 108)"/>
+    <circle cx="42" cy="116" r="12"/>
+  </g>
+  <path class="line" stroke-width="3.5" stroke="#f7a41d" d="M14 90 q-6 8 -2 18 M8 78 q-12 12 -6 30"/>
 
+  </g>
+  <!-- helmet, perched on top, Zig orange -->
+  <path class="ol" fill="#f7a41d" d="M60 48 C58 8 162 8 160 48 C130 38 90 38 60 48 Z"/>
+  <path class="line" stroke-width="3.5" d="M86 22 l5 14 M110 16 l0 16 M134 22 l-5 14"/>
+  <path class="line" stroke-width="3" d="M62 46 C80 40 140 40 158 46"/>
 </svg>

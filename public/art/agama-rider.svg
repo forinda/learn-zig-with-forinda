@@ -2,23 +2,25 @@
   <title id="t">Agama, a red-headed lizard in a cycling helmet, racing a road bike</title>
   <defs>
     <style>
-      .ol { stroke: #1d1a16; stroke-linecap: round; stroke-linejoin: round; }
+      .ol { stroke: #1d1a16; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+      .line { fill: none; stroke: #1d1a16; stroke-linecap: round; stroke-linejoin: round; }
     </style>
   </defs>
+
   <!-- ground shadow and speed lines -->
-  <ellipse cx="240" cy="334" rx="190" ry="10" fill="#000" opacity="0.12"/>
+  <ellipse cx="240" cy="336" rx="190" ry="9" fill="#000" opacity="0.12"/>
   <g stroke="#f7a41d" stroke-width="6" stroke-linecap="round" opacity="0.8">
-    <path d="M18 150h46M8 190h40M24 230h34"/>
+    <path d="M14 170h44M6 210h38M20 250h32"/>
   </g>
 
-  <!-- far leg (behind the bike) -->
-  <path class="ol" d="M212 168 L250 226 L206 252" fill="none" stroke-width="24"/>
-  <path d="M212 168 L250 226 L206 252" fill="none" stroke="#2457b8" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- far leg (behind the bike, in shadow): chunky thigh, short shin -->
+  <path class="ol" fill="#2457b8" d="M200 156 C222 166 244 186 254 206 C260 220 254 232 242 238 C230 242 218 246 208 252 L196 236 C206 230 216 226 226 220 C216 206 202 194 192 182 Z"/>
+  <path class="ol" fill="#1d3f8f" d="M194 234 C204 230 216 234 218 244 C220 252 212 256 202 256 C192 258 184 252 184 246 C184 238 188 236 194 234 Z"/>
 
-  <!-- tail: long, blue, with the agama's orange band -->
-  <path class="ol" d="M200 168 C150 160 120 150 96 128 C78 112 58 104 36 112" fill="none" stroke-width="22"/>
-  <path d="M200 168 C150 160 120 150 96 128 C78 112 58 104 36 112" fill="none" stroke="#2f6fe0" stroke-width="13" stroke-linecap="round"/>
-  <path d="M96 128 C80 114 66 108 52 108" fill="none" stroke="#ff6a2b" stroke-width="13" stroke-linecap="round"/>
+  <!-- tail: thick at the hip, tapering to a point, with the agama's orange band -->
+  <path class="ol" fill="#2f6fe0" d="M204 146 C160 138 128 128 104 110 C84 96 62 92 42 98 C28 102 28 116 42 115 C62 112 82 120 98 134 C124 158 160 172 204 182 Z"/>
+  <path fill="#ff6a2b" d="M104 111 C92 102 78 97 64 97 C57 98 57 111 64 111 C76 112 88 119 97 129 Z"/>
+  <path class="line" stroke-width="3" opacity="0.45" d="M150 148 l4 9 M172 154 l4 9 M128 140 l4 9"/>
 
   <!-- wheels -->
   <g>
@@ -38,52 +40,64 @@
   <g fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path d="M130 272 L230 274 L205 172 Z M205 172 L320 166 L230 274 M320 166 L350 272" stroke="#1d1a16" stroke-width="16"/>
     <path d="M130 272 L230 274 L205 172 Z M205 172 L320 166 L230 274 M320 166 L350 272" stroke="#f7a41d" stroke-width="9"/>
-    <!-- saddle, bars -->
-    <path d="M186 160 h36" stroke="#1d1a16" stroke-width="12"/>
+    <path d="M184 160 C192 156 214 156 224 160" stroke="#1d1a16" stroke-width="12"/>
     <path d="M318 162 l22 -8 c14 -4 20 8 12 22 c-4 7 -12 8 -16 4" stroke="#1d1a16" stroke-width="9"/>
-    <!-- crank and pedal -->
-    <path d="M230 274 L256 298" stroke="#1d1a16" stroke-width="8"/>
+    <path d="M230 274 L258 298" stroke="#1d1a16" stroke-width="8"/>
     <circle cx="230" cy="274" r="11" fill="#cfd5db" stroke="#1d1a16" stroke-width="5"/>
   </g>
 
   <!-- back crest -->
-  <path class="ol" d="M222 128 l6 -22 l12 14 l8 -24 l12 18 l10 -24 l12 20 l10 -22 l10 20 l10 -16 l6 16 Z" fill="#1d3f8f" stroke-width="5"/>
-  <!-- body, leaning over the bars -->
-  <path class="ol" d="M198 168 C192 140 224 116 268 108 C298 103 318 108 322 124 C326 142 300 160 262 168 C234 174 204 180 198 168 Z" fill="#2f6fe0" stroke-width="6"/>
-  <!-- belly shade -->
-  <path d="M212 170 C238 168 270 162 300 148" fill="none" stroke="#8fb4ff" stroke-width="7" stroke-linecap="round"/>
+  <path class="ol" fill="#1d3f8f" d="M214 124 l6 -22 l12 14 l8 -24 l12 18 l10 -24 l12 20 l10 -22 l10 20 l10 -16 l6 16 Z"/>
+
+  <!-- near leg: chunky thigh, round knee, short shin, one piece -->
+  <path class="ol" fill="#2f6fe0" d="M202 146 C234 146 266 166 286 192 C298 206 296 222 286 232 C280 252 276 270 274 288 L250 288 C252 268 254 250 256 232 C238 216 220 200 204 186 Z"/>
+  <path class="line" stroke-width="3" opacity="0.4" d="M264 200 C272 206 278 214 280 222"/>
+  <!-- foot with toes, on the pedal -->
+  <path class="ol" fill="#1d3f8f" d="M246 282 C258 278 274 280 284 286 C296 288 304 294 302 300 C298 306 288 304 282 305 C270 307 252 307 244 302 C238 298 240 288 246 282 Z"/>
+  <path class="line" stroke-width="3" d="M288 293 l4 9 M279 292 l3 10"/>
+
+  <!-- near arm: chunky, short, one piece -->
+  <path class="ol" fill="#2f6fe0" d="M288 106 C306 108 322 122 334 138 C342 148 348 156 354 162 L340 180 C332 174 324 168 316 162 C302 150 288 136 280 124 Z"/>
+  <!-- hand wrapped round the bar -->
+  <path class="ol" fill="#1d3f8f" d="M336 164 C343 157 357 157 362 166 C366 175 360 185 350 185 C341 185 332 175 336 164 Z"/>
+  <path class="line" stroke-width="2.5" d="M345 171 l6 7 M352 166 l6 7"/>
+
+  <!-- body: chunky, leaning over the bars -->
+  <path class="ol" fill="#2f6fe0" d="M194 170 C184 136 216 106 266 98 C302 92 326 100 330 120 C334 144 306 164 264 174 C234 182 200 188 194 170 Z"/>
+  <!-- belly, lighter, in bands -->
+  <path class="ol" stroke-width="3" fill="#f3ead2" d="M204 174 C232 174 270 166 306 146 C314 154 306 164 294 168 C264 178 232 184 206 182 Z"/>
+  <path class="line" stroke-width="2.5" opacity="0.45" d="M236 176 l2 6 M258 172 l2 6 M280 166 l2 6"/>
+  <!-- scales on the back -->
+  <g fill="#1d3f8f" opacity="0.35">
+    <circle cx="232" cy="130" r="3"/><circle cx="250" cy="122" r="3"/><circle cx="270" cy="116" r="3"/>
+    <circle cx="290" cy="114" r="3"/><circle cx="242" cy="144" r="2.5"/><circle cx="262" cy="136" r="2.5"/>
+  </g>
   <!-- race bib -->
-  <g transform="rotate(-12 250 135)">
-    <rect x="232" y="122" width="38" height="28" rx="4" fill="#fff" class="ol" stroke-width="4"/>
-    <text x="251" y="143" font-family="ui-monospace, monospace" font-weight="700" font-size="17" text-anchor="middle" fill="#1d1a16">17</text>
+  <g transform="rotate(-12 252 136)">
+    <rect x="232" y="122" width="40" height="30" rx="4" fill="#fff" class="ol" stroke-width="4"/>
+    <text x="252" y="144" font-family="ui-monospace, monospace" font-weight="700" font-size="18" text-anchor="middle" fill="#1d1a16">17</text>
   </g>
 
-  <!-- near leg to the pedal -->
-  <path class="ol" d="M220 166 L268 214 L256 296" fill="none" stroke-width="26"/>
-  <path d="M220 166 L268 214 L256 296" fill="none" stroke="#2f6fe0" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-  <ellipse cx="262" cy="300" rx="16" ry="8" fill="#1d3f8f" class="ol" stroke-width="5"/>
-
-  <!-- near arm to the bars -->
-  <path class="ol" d="M298 126 L330 150 L344 170" fill="none" stroke-width="22"/>
-  <path d="M298 126 L330 150 L344 170" fill="none" stroke="#2f6fe0" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="346" cy="172" r="9" fill="#1d3f8f" class="ol" stroke-width="5"/>
-
-  <!-- head: the agama's orange-red -->
-  <path class="ol" d="M300 112 C300 84 324 70 350 74 C374 78 392 92 392 108 C392 122 376 128 356 128 C336 130 304 132 300 112 Z" fill="#ff6a2b" stroke-width="6"/>
-  <path d="M312 120 C330 124 356 124 380 118" fill="none" stroke="#e0521a" stroke-width="5" stroke-linecap="round"/>
-  <!-- cheek -->
-  <ellipse cx="364" cy="110" rx="8" ry="5" fill="#ffb199" opacity="0.9"/>
-  <!-- grin -->
-  <path d="M352 116 C364 120 376 118 386 112" fill="none" stroke="#1d1a16" stroke-width="4" stroke-linecap="round"/>
-  <!-- eye -->
-  <circle cx="346" cy="98" r="12" fill="#fff" class="ol" stroke-width="4"/>
-  <circle cx="351" cy="99" r="6" fill="#1d1a16"/>
-  <circle cx="353" cy="96" r="2" fill="#fff"/>
-  <!-- nostril -->
-  <circle cx="384" cy="100" r="2.5" fill="#1d1a16"/>
-
-  <!-- helmet: Zig orange with vents -->
-  <path class="ol" d="M302 98 C300 70 326 56 352 60 C374 64 386 76 384 88 C366 82 330 88 302 98 Z" fill="#f7a41d" stroke-width="6"/>
-  <path d="M322 74 l8 12 M340 66 l6 14 M358 66 l4 14" stroke="#1d1a16" stroke-width="4" stroke-linecap="round"/>
-  <path d="M318 98 C322 110 330 118 340 122" fill="none" stroke="#1d1a16" stroke-width="3"/>
+  <!-- head: big (the mascot's proportions), long snout, brow and jaw, scaled up around the neck -->
+  <g transform="translate(302 120) scale(1.35) translate(-302 -120)">
+    <path class="ol" fill="#ff6a2b" d="M300 114 C298 92 314 76 338 74 C356 72 372 80 384 90 C394 98 398 106 394 114 C388 124 370 126 352 128 C334 130 316 132 306 126 C302 124 300 120 300 114 Z"/>
+    <path fill="#e0521a" d="M306 124 C322 128 352 128 378 122 C374 130 356 136 336 136 C320 136 310 132 306 124 Z"/>
+    <!-- open grin with a tongue -->
+    <path class="ol" fill="#5a1e1a" stroke-width="3" d="M344 114 C358 120 378 118 392 110 C390 122 378 130 364 130 C354 130 346 124 344 114 Z"/>
+    <path fill="#e86a7a" d="M356 126 C362 120 376 120 382 124 C378 130 362 132 356 126 Z"/>
+    <ellipse cx="350" cy="106" rx="6" ry="4" fill="#ffb199" opacity="0.9"/>
+    <!-- big shiny eye in a raised socket -->
+    <circle class="ol" cx="344" cy="94" r="17" fill="#ff7d45" stroke-width="3.5"/>
+    <circle cx="346" cy="96" r="13" fill="#fff" stroke="#1d1a16" stroke-width="2.5"/>
+    <circle cx="349" cy="97" r="9" fill="#c8762a"/>
+    <circle cx="350" cy="98" r="6" fill="#1d1a16"/>
+    <circle cx="353" cy="93" r="3.2" fill="#fff"/>
+    <circle cx="346" cy="101" r="1.6" fill="#fff"/>
+    <circle cx="386" cy="100" r="2.2" fill="#1d1a16"/>
+    <g transform="translate(-2 -12)">
+    <path class="ol" fill="#f7a41d" stroke-width="4" d="M302 98 C300 70 326 56 352 60 C374 64 386 76 384 88 C366 82 330 88 302 98 Z"/>
+    <path class="line" stroke-width="3.5" d="M322 74 l8 12 M340 66 l6 14 M358 66 l4 14"/>
+    <path class="line" stroke-width="2.5" d="M316 98 C320 112 330 122 342 126"/>
+    </g>
+  </g>
 </svg>
