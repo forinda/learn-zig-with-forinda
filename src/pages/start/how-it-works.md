@@ -9,12 +9,12 @@ order: 2
 
 ## One game, one step at a time
 
-Every lesson adds one step to the same game. The code for each step lives in its own folder in the course
+Every Guide page adds one step to the same game. The code for each step lives in its own folder in the course
 repository, `code/steps/NN-name/`, and each one is a complete project: copy the folder (or clone the whole
 repository), then run `zig build run` and `zig build test` inside it. If you get stuck, take the next step's
 folder and carry on.
 
-Each lesson shows exactly what changed since the last step, so you can type it in yourself (recommended:
+Each Guide page shows exactly what changed since the last step, so you can type it in yourself (recommended:
 you learn more) or copy it.
 
 ## Read in the Guide, check in the Course
@@ -22,16 +22,24 @@ you learn more) or copy it.
 Every idea comes in two halves:
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph guide["Guide: learn it"]
-        engage["Engage<br/>a problem in the game"] --> explore["Explore<br/>try it, see what happens"]
-        explore --> explain["Explain<br/>the idea, with examples"]
-        explain --> elaborate["Elaborate<br/>add it to the game"]
+        direction LR
+        engage["Engage"] --> explore["Explore"]
+        explore --> explain["Explain"]
+        explain --> elaborate["Elaborate"]
     end
     subgraph course["Course: check it"]
-        recall["Recall"] --> predict["Predict"] --> fix["Fix it"] --> build["Build it"]
+        direction LR
+        recall["Recall"] --> predict["Predict"]
+        predict --> fix["Fix it"]
+        fix --> build["Build it"]
     end
-    elaborate --> recall
+    guide --> course
+    classDef teach fill:#fff1dc,stroke:#c76d00,color:#2a1d14
+    classDef check fill:#e3ecff,stroke:#2457b8,color:#2a1d14
+    class engage,explore,explain,elaborate teach
+    class recall,predict,fix,build check
 ```
 
 **The Guide** teaches, in ordinary pages you can read at your own pace, with the code right where it's explained:
