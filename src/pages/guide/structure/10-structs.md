@@ -13,6 +13,8 @@ from the index. Rider 3 is "index 3 of each array", and nothing stops one array 
 A rider is really one thing with a few parts. A **struct** says exactly that: a new type made of named **fields**,
 kept together.
 
+<img class="lesson-art" src="/art/agama-structure.svg" alt="Agama, the course's lizard, pointing at a clipboard with a rider card: name A, speed 10.4, position 0" width="400" height="300" />
+
 ## Declaring a struct
 
 ```zig

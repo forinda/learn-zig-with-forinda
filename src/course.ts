@@ -34,6 +34,7 @@ export const parts: Part[] = [
     slug: 'structure',
     title: 'Structure',
     summary: 'Structs, enums, unions, optionals and errors: the rider, the course and the race as types.',
+    art: '/art/agama-structure.svg',
     competencies: [
       'I can model the game with structs, enums and tagged unions',
       'I can handle missing values with optionals and failures with errors',
