@@ -1,31 +1,46 @@
-// The rules every lesson follows that the build can't check. Run with `pnpm test`.
+// The rules every guide page and lesson follows that the build can't check. Run with `pnpm test`.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { groups } from '../src/groups.ts'
 import { parts } from '../src/course.ts'
-import { lessonProblems, mdUnder, orderProblems } from './rules.ts'
+import { guideProblems, lessonProblems, mdUnder, orderProblems, stretchProblems } from './rules.ts'
 
+const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url))
+const GUIDE = fileURLToPath(new URL('../src/pages/guide/', import.meta.url))
 const LEARN = fileURLToPath(new URL('../src/pages/learn/', import.meta.url))
 const STEPS = fileURLToPath(new URL('../code/steps/', import.meta.url))
-const BROKEN = fileURLToPath(new URL('./fixtures/learn/start/broken-lesson.md', import.meta.url))
+const BROKEN_LESSON = fileURLToPath(new URL('./fixtures/learn/start/broken-lesson.md', import.meta.url))
+const BROKEN_GUIDE = fileURLToPath(new URL('./fixtures/guide/start/broken-guide.md', import.meta.url))
 
-test('the parts in src/course.ts are the course groups, in order', () => {
+test('the parts in src/course.ts are the guide and course groups, in order', () => {
   assert.deepEqual(parts.map((p) => p.title), groups.learn.map((g) => g.title))
+  assert.deepEqual(parts.map((p) => p.title), groups.guide.map((g) => g.title))
   for (const p of parts) assert.ok(p.competencies.length > 0, `${p.title} has no competencies`)
 })
 
-test('every lesson follows the rules (group and folder, 5E steps, evaluate, step folder, competency, no retyped game code)', () => {
-  for (const file of mdUnder(LEARN)) assert.deepEqual(lessonProblems(file, STEPS), [], file)
+test('every guide page follows the rules (part and folder, four teaching sections, step folder, link to its lesson)', () => {
+  for (const file of mdUnder(GUIDE)) assert.deepEqual(guideProblems(file, STEPS, PAGES), [], file)
 })
 
-test('lessons are ordered 1..n within each part', () => {
+test('every lesson follows the rules (read-first link, check steps, quizzes, build exercise, competency)', () => {
+  for (const file of mdUnder(LEARN)) assert.deepEqual(lessonProblems(file, STEPS, PAGES), [], file)
+})
+
+test('guide pages and lessons are ordered 1..n within each part; each part ends with a Stretch', () => {
+  assert.deepEqual(orderProblems(mdUnder(GUIDE)), [])
   assert.deepEqual(orderProblems(mdUnder(LEARN)), [])
+  assert.deepEqual(stretchProblems(mdUnder(LEARN)), [])
+})
+
+test('the rules catch a broken guide page', () => {
+  const problems = guideProblems(BROKEN_GUIDE, STEPS, PAGES).join('\n')
+  for (const rule of ['folder:', 'sections:', 'step:', 'lesson:']) assert.ok(problems.includes(rule), `expected "${rule}" in:\n${problems}`)
 })
 
 test('the rules catch a broken lesson', () => {
-  const problems = lessonProblems(BROKEN, STEPS).join('\n')
-  for (const rule of ['folder:', '5E:', 'evaluate: no ::: quiz', 'evaluate: no zig build test', 'evaluate: no ### Exercise', 'step:', 'competency:', 'code:']) {
-    assert.ok(problems.includes(rule), `expected a "${rule}" problem in:\n${problems}`)
+  const problems = lessonProblems(BROKEN_LESSON, STEPS, PAGES).join('\n')
+  for (const rule of ['folder:', 'steps:', 'quiz:', 'Predict:', 'Fix it:', 'Build it: no zig build test', 'Build it: no ### Exercise', 'guide:', 'step:', 'competency:', 'code:']) {
+    assert.ok(problems.includes(rule), `expected "${rule}" in:\n${problems}`)
   }
 })

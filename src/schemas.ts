@@ -33,19 +33,29 @@ const page = (allowed: readonly string[]) => (d: Data, issues: Issue[]) => {
 
 const startPage = page(groups.start.map((g) => g.title))
 const coursePage = page(groups.learn.map((g) => g.title))
+const stepName = (d: Data, issues: Issue[]) => {
+  if (typeof d.step !== 'string' || !/^\d{2}-[a-z0-9-]+$/.test(d.step)) issues.push({ message: 'Expected a step folder name like 01-hello', path: ['step'] })
+}
 
-/** A lesson: a course page in the lesson layout, one `##` step at a time, paired with a code step. */
+/** A guide page: teaching, in the docs layout, paired with a code step. */
+const guidePage = (d: Data, issues: Issue[]) => {
+  page(groups.guide.map((g) => g.title))(d, issues)
+  stepName(d, issues)
+}
+
+/** A lesson: checks understanding, in the lesson layout, one `##` step at a time, paired with a code step. */
 const lesson = (d: Data, issues: Issue[]) => {
   coursePage(d, issues)
   if (d.layout !== '/src/layouts/lesson.tscl') issues.push({ message: 'Expected /src/layouts/lesson.tscl', path: ['layout'] })
   if (d.steps !== true) issues.push({ message: 'Expected true', path: ['steps'] })
   if (!Number.isInteger(d.minutes) || (d.minutes as number) <= 0) issues.push({ message: 'Expected a positive whole number', path: ['minutes'] })
-  if (typeof d.step !== 'string' || !/^\d{2}-[a-z0-9-]+$/.test(d.step)) issues.push({ message: 'Expected a step folder name like 01-hello', path: ['step'] })
+  stepName(d, issues)
   text(d, 'competency', issues)
 }
 
 /** One schema per folder, keyed by the glob vite.config.ts applies it to (the first match wins). */
 export const schemas = {
+  'guide/**/*.md': schema(guidePage),
   'learn/**/*.md': schema(lesson),
   'start/**/*.md': schema(startPage),
   'index.md': schema(startPage),

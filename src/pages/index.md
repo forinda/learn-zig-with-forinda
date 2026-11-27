@@ -24,8 +24,9 @@ You ride, rivals race you, a breakaway goes up the road, the bunch chases, and y
   [↑↓] power  [space] sprint  [s] sit in  [q] quit
 ```
 
-No programming experience is needed. Each lesson adds one step to the game, and every step is a complete
-project you can run, so you can start anywhere and never fall behind for good. By the end you'll have written a
+No programming experience is needed. The **Guide** teaches each idea and adds it to the game; the **Course**
+checks you've got it, with quizzes, a snippet to predict, a bug to fix and the step to build yourself. Every step
+of the game is a complete project you can run, so you can start anywhere and never fall behind for good. By the end you'll have written a
 real program with a game loop, physics, computer riders with their own plans, saved careers, a C library and
 races with your friends over the network.
 

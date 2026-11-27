@@ -12,115 +12,86 @@ competency: "I can read a compiler error and fix the code it points to"
 
 # Reading compiler errors
 
-## Engage
+**Read first:** [Reading compiler errors](/guide/start/03-reading-compiler-errors) in the Guide. This lesson checks you understood it.
 
-You will write code that doesn't compile. Everyone does, every day. The Zig compiler is strict, and that's a
-gift: it catches mistakes before your game ever runs, and it tells you exactly where they are.
+## Recall
 
-The skill isn't avoiding errors. It's reading them.
-
-## Explore
-
-Here are three small programs, each broken on purpose. Make a folder, save each one there under its name
-(`a.zig`, `b.zig`, `c.zig`), or find them in the course repository in `code/broken/03-race-card/`.
-
-<<< @/code/broken/03-race-card/a.zig [a.zig]
-
-<<< @/code/broken/03-race-card/b.zig [b.zig]
-
-<<< @/code/broken/03-race-card/c.zig [c.zig]
-
-In that folder, run each one and read the **first line** of what comes back:
-
-```sh
-zig run a.zig
-zig run b.zig
-zig run c.zig
-```
-
-Before reading on, guess what each one is complaining about.
-
-## Explain
-
-Every error has the same shape:
-
-```text
-b.zig:5:25: error: fractional component prevents float value '8.5' from coercion to type 'u32'
-    const riders: u32 = 8.5;
-                        ^~~
-```
-
-- `b.zig:5:25` is **where**: the file, the line (5) and the column (25).
-- After `error:` comes **what** is wrong.
-- Below it, the line itself, with `^` under the exact spot.
-
-Fix the first error first: one mistake can cause others further down, and they disappear with it.
-
-The three you just met are the ones you'll see most:
-
-| Error | What it means | The fix |
-|---|---|---|
-| `unused local constant` | You made a value and never used it. | Use it, or remove it. |
-| `fractional component prevents float value '8.5' from coercion to type 'u32'` | A whole-number type (`u32`) can't hold `8.5`. | Use a whole number, or a type that holds fractions (`f64`). |
-| `error union of type 'error{WriteFailed}!void' is ignored` | Something that can fail wasn't checked. | Put `try` in front of it. |
-
-## Elaborate
-
-Now the game gets its first real screen: a **race card** for the first race. **I do:** three facts about the
-race become constants (values that never change), and a new function, `raceCard`, prints them in a box. Here's the
-change:
-
-<<< @/code/diffs/03-race-card.diff
-
-**We do:** make the change in your project (or copy `code/steps/03-race-card`), then run it:
-
-```sh
-zig build run
-```
-
-```text
-+------------------------------+
-| Terminal Tour                |
-|                              |
-| Course:   Compile Pass       |
-| Distance:  12.5 km           |
-| Field:    8 riders           |
-+------------------------------+
-```
-
-`{s:<28}` means "a string, padded on the right to 28 characters", which keeps the box's right edge straight.
-`{d:>5.1}` means "a number, one decimal place, padded on the left to 5 characters".
-
-Notice the test: it doesn't print to the screen. It prints the card into a fixed buffer and checks the buffer
-holds the course, the distance and the field.
-
-## Evaluate
-
-::: quiz The compiler says `error union of type 'error{WriteFailed}!void' is ignored` on a line with `out.print(...)`. What does it want?
+::: quiz The compiler says `error union of type 'error{WriteFailed}!void' is ignored` on a line with out.print(...). What does it want?
 - [ ] Delete the line
-- [ ] Change `print` to `write`
-- [x] Put `try` in front of `out.print(...)`, so a failed print is handled
+- [ ] Change print to write
+- [x] Put try in front of out.print(...), so a failed print is handled
 - [ ] Add a test
 
-`print` can fail, so it returns an error union. Zig won't let you ignore that: `try` passes the error on to
-whoever called your function.
+`print` can fail, so it returns an error union. Zig won't let you ignore that: `try` passes the error on.
 :::
 
-Check the race card's test passes:
+::: quiz In `b.zig:5:25: error: ...`, what is 25?
+- [ ] The error's number
+- [ ] The number of errors
+- [x] The column on line 5 where the problem is
+- [ ] How many lines the file has
 
-```sh
-zig build test --summary all
+`file:line:column`. The line below the message shows the code, with `^` under that column.
+:::
+
+## Predict
+
+```zig
+const std = @import("std");
+
+pub fn main() void {
+    const laps: u8 = 300;
+    std.debug.print("{d} laps\n", .{laps});
+}
 ```
+
+::: quiz What happens?
+- [ ] It prints 300 laps
+- [ ] It prints 44 laps (300 wraps round)
+- [x] It doesn't compile: a u8 can't hold 300
+- [ ] It crashes when it runs
+
+A `u8` holds 0 to 255. Zig checks constants while compiling: `error: type 'u8' cannot represent integer value '300'`.
+:::
+
+## Fix it
+
+```zig
+pub fn main() void {
+    const riders: u32 = 8;
+    std.debug.print("Terminal Tour\n", .{});
+}
+```
+
+```text
+error: unused local constant
+```
+
+::: quiz Which fix is right?
+- [ ] Change const to var
+- [x] Use riders (print it), or delete the line
+- [ ] Give it a type of u8
+- [ ] Add pub in front of it
+
+Zig doesn't allow values you never use: they're usually a mistake. Use it or remove it.
+:::
+
+## Build it
 
 ### Exercise
 
-**Part 1's challenge: make your own race card.** Pick a race you know (a road near you, a famous climb, a loop of
-your town) and change the constants to describe it. Then:
+Make the race card's field 12 riders. The box's right edge moves out by one: fix it so the box stays straight for
+both 8 and 12 riders.
 
-1. Change the test so it checks *your* race.
-2. Make the field 12 riders. The box's right edge moves. Why? Fix it.
-3. Break your code on purpose in one of the three ways from this lesson, and read the error before you fix it.
+Hint: print the number with a fixed width, `{d:>2}`, and take one space off the padding after it: `{s:<9}`.
 
-Hint for 2: `12 riders` is one character longer than `8 riders`, and the padding after it doesn't know. Print
-the number with a fixed width, `{d:>2}` (two characters, so ` 8` and `12` take the same room), and take one space
-off the padding after it: `{s:<9}`.
+```sh
+zig build run
+zig build test --summary all
+```
+
+## Stretch
+
+**Part 1's challenge: make your own race card.** Pick a race you'd like to ride and change the constants to describe
+it. Change the test so it checks *your* race. Then break your code on purpose in each of the three ways from the
+guide page, and read each error before you fix it.

@@ -12,97 +12,9 @@ competency: "I can work with arrays, slices and text"
 
 # Arrays and slices
 
-## Engage
+**Read first:** [Arrays and slices](/guide/basics/08-arrays-and-slices) in the Guide. This lesson checks you understood it.
 
-A race with one rider isn't a race. The race card promises 8 riders. Eight speeds, eight positions: we could make
-eight `var`s for each, but then every loop and every function would need sixteen names.
-
-What we want is *one* name for all eight positions, and a way to say "rider 3's position".
-
-## Explore
-
-Save this as `riders.zig` and run it:
-
-```zig
-const std = @import("std");
-
-pub fn main() void {
-    const speeds_mps = [_]f64{ 10.0, 10.4, 9.8 };
-    std.debug.print("{d} riders, the second at {d} m/s\n", .{ speeds_mps.len, speeds_mps[1] });
-}
-```
-
-Notice: the *second* rider is `speeds_mps[1]`. Now change the `1` to `3`, run it, and read the message carefully.
-
-## Explain
-
-An **array** is a fixed number of values of one type, side by side: `[3]f64` is three `f64`s. Write `[_]` and Zig
-counts them for you. `.len` is how many there are.
-
-Each value has an **index**, its position, starting from **0**: the first is `[0]`, the last is `[len - 1]`. Asking
-for one past the end is always caught. When Zig knows the index while compiling, as in the Explore, it won't build
-the program:
-
-```text
-riders.zig:5:90: error: index 3 outside array of length 3
-```
-
-When the index is only known while the program runs (counted in a loop, say), the check happens then, and the program
-stops instead of reading memory that isn't the array's:
-
-```text
-thread 368323 panic: index out of bounds: index 3, len 3
-```
-
-To give every element the same starting value, use `@splat`:
-
-```zig
-var positions_m: [8]f64 = @splat(0); // eight riders, all at the start
-```
-
-A `for` loop can walk an array and count as it goes, or walk two arrays side by side:
-
-```zig
-for (positions_m, 0..) |position_m, i| { ... }         // each value, and its index
-for (positions_m, speeds_mps) |*position_m, speed| { ... } // two at once; * lets you change the first
-```
-
-A **slice** is a view of some or all of an array: a pointer to the first element and a length. Functions take slices
-so they work for any number of riders:
-
-| Slice type | The function can |
-|---|---|
-| `[]const f64` | read the values |
-| `[]f64` | read and change them |
-
-Pass an array to a slice parameter with `&`: `leader(&positions_m)`.
-
-## Elaborate
-
-**I do:** the field gets one array of speeds (rider A to H) and one of positions. `advanceAll` moves everyone by
-one tick, changing the positions in place through a `[]f64`. `leader` reads them through a `[]const f64` and
-returns the index of the furthest, and `riderName` turns an index into a letter (`'A' + 1` is `'B'`):
-
-<<< @/code/diffs/08-arrays-slices.diff
-
-**We do:** make the change (or copy `code/steps/08-arrays-slices`) and run it:
-
-```sh
-zig build run
-```
-
-```text
-km 1 at 1:37: leader is B
-km 2 at 3:13: leader is B
-...
-km 12 at 19:14: leader is B
-B wins in 20:02
-```
-
-B leads all the way: every rider rides at one fixed speed, and B's is the highest. Real racing (drafting, tiring,
-attacking) arrives with the Simulation part; for now the field is in place.
-
-## Evaluate
+## Recall
 
 ::: quiz A function only needs to read the riders' positions. Which parameter type fits best?
 - [x] positions_m: []const f64
@@ -110,18 +22,74 @@ attacking) arrives with the Simulation part; for now the field is in place.
 - [ ] positions_m: [8]f64
 - [ ] positions_m: f64
 
-A `[]const f64` slice reads any number of positions and promises not to change them. `[]f64` would allow changes it
-doesn't need, and `[8]f64` would only work for exactly eight riders.
+A `[]const f64` slice reads any number of positions and promises not to change them.
 :::
 
-```sh
-zig build test --summary all
+::: quiz What's the index of the last element of a [8]f64?
+- [ ] 8
+- [x] 7
+- [ ] 1
+- [ ] -1
+
+Indexes start at 0, so eight elements are 0 to 7.
+:::
+
+## Predict
+
+```zig
+const speeds_mps = [_]f64{ 10.0, 12.0, 9.0 };
+var best: usize = 0;
+for (speeds_mps, 0..) |speed, i| {
+    if (speed > speeds_mps[best]) best = i;
+}
+std.debug.print("{d}\n", .{best});
 ```
+
+::: quiz What does it print?
+- [ ] 12
+- [x] 1
+- [ ] 2
+- [ ] 0
+
+It prints the *index* of the fastest, not the speed: 12.0 is at index 1.
+:::
+
+## Fix it
+
+```zig
+fn reset(positions_m: []f64) void {
+    for (positions_m) |*p| p.* = 0;
+}
+
+pub fn main() void {
+    var positions_m = [_]f64{ 12.0, 30.5, 7.25 };
+    reset(positions_m);
+}
+```
+
+```text
+error: local variable is never mutated
+```
+
+::: quiz reset clearly changes the positions. What's wrong?
+- [ ] Make positions_m a const
+- [x] Pass a slice of the array: reset(&positions_m)
+- [ ] Change the parameter to [3]f64
+- [ ] Add try in front of reset
+
+Without `&`, nothing gives `reset` a way to change your array, so Zig sees a `var` that never changes. `&positions_m`
+passes a slice of it, and then the error goes away.
+:::
+
+## Build it
 
 ### Exercise
 
 Write `lastPlace(positions_m: []const f64) usize`, the index of the rider furthest back, with a test, and print
-`last is G` at each kilometre too.
+`last is G` at each kilometre.
 
-Hint: it's `leader` with one comparison turned round. Test it with a short array where the last place is in the
-middle, like `&.{ 5, 2, 9 }`.
+Hint: it's `leader` with one comparison turned round. Test it where the last place is in the middle: `&.{ 5, 2, 9 }`.
+
+```sh
+zig build test --summary all
+```

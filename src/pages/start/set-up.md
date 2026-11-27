@@ -65,4 +65,4 @@ matches Zig 0.17.
 
 ## Next
 
-[Start the course →](/learn/start/01-install-and-hello)
+[Start with the Guide →](/guide/start/01-install-and-hello)
