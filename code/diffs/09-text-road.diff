@@ -1,0 +1,76 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -29,6 +29,7 @@ pub fn main(init: std.process.Init) !void {
+     var positions_m: [speeds_mps.len]f64 = @splat(0); // one position per rider, all at the start
+     var seconds: u32 = 0;
+     var next_km_m: f64 = 1000;
++    var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     while (!finished(positions_m[leader(&positions_m)], distance_m)) {
+         advanceAll(&positions_m, &speeds_mps, dt_s);
+         seconds += 1;
+@@ -36,6 +37,7 @@ pub fn main(init: std.process.Init) !void {
+             try out.print("km {d:.0} at ", .{next_km_m / 1000});
+             try printTime(out, seconds);
+             try out.print(": leader is {c}\n", .{riderName(leader(&positions_m))});
++            try out.print("  {s}\n", .{drawRoad(&road, &positions_m, distance_m)});
+             next_km_m += 1000;
+         }
+     }
+@@ -123,6 +125,26 @@ fn riderName(i: usize) u8 {
+     return 'A' + @as(u8, @intCast(i));
+ }
+ 
++/// Draws the road into `buf`: dashes, with each rider's letter where it is along the course. Returns the line.
++fn drawRoad(buf: []u8, positions_m: []const f64, distance_m: f64) []const u8 {
++    @memset(buf, '-');
++    const last: f64 = @floatFromInt(buf.len - 1);
++    // Riders close together share a column, and the last letter written there is the one you see:
++    // write the leader last, so the race's leader always shows.
++    const first = leader(positions_m);
++    for (positions_m, 0..) |position_m, i| {
++        if (i != first) buf[columnOf(position_m, distance_m, last)] = riderName(i);
++    }
++    buf[columnOf(positions_m[first], distance_m, last)] = riderName(first);
++    return buf;
++}
++
++/// The column (0 to `last`) for a rider at `position_m` of `distance_m`.
++fn columnOf(position_m: f64, distance_m: f64, last: f64) usize {
++    const along = @min(position_m / distance_m, 1.0); // 0 at the start, 1 at the line
++    return @intFromFloat(along * last);
++}
++
+ test "the game has a title" {
+     try std.testing.expectEqualStrings("Terminal Tour", title());
+ }
+@@ -188,3 +210,29 @@ test "everyone moves at their own speed" {
+ test "the leader is the furthest along" {
+     try std.testing.expectEqual(@as(usize, 1), leader(&.{ 3, 9, 4 }));
+ }
++
++test "a rider at the start is at column 0" {
++    var road: [8]u8 = undefined;
++    const line = drawRoad(&road, &.{0}, 100);
++    try std.testing.expectEqual(@as(u8, 'A'), line[0]);
++}
++
++test "a rider at the line is at the last column" {
++    var road: [8]u8 = undefined;
++    const line = drawRoad(&road, &.{100}, 100);
++    try std.testing.expectEqual(@as(u8, 'A'), line[7]);
++}
++
++test "two riders, two letters" {
++    var road: [8]u8 = undefined;
++    const line = drawRoad(&road, &.{ 0, 50 }, 100);
++    try std.testing.expectEqual(@as(u8, 'A'), line[0]);
++    try std.testing.expectEqual(@as(u8, 'B'), line[3]); // halfway along 8 columns (0..7): 3.5, rounded down
++    try std.testing.expectEqual(@as(u8, '-'), line[1]);
++}
++
++test "when riders share a column, the leader's letter shows" {
++    var road: [8]u8 = undefined;
++    const line = drawRoad(&road, &.{ 10.5, 10 }, 100); // both in column 0; A is ahead
++    try std.testing.expectEqual(@as(u8, 'A'), line[0]);
++}
