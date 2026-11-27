@@ -1,0 +1,70 @@
+{{-- The course at a glance (home page): each part with its summary, its "I can ..." competencies and a link to its
+     first lesson (from the pages theme-docs read; "Coming soon" until a part has one). --}}
+@import { parts } from '~/course.ts'
+@import pages from 'virtual:theme-docs/pages'
+
+<script>
+  // A part's first lesson: its lowest-ordered page under /learn/.
+  const firstLesson = (title) =>
+    pages
+      .filter((p) => p.group === title && p.href.startsWith('/learn/') && !p.hidden)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0]
+</script>
+
+<ol class="course-map">
+  @for (part of parts; track part.slug) {
+    <li class="course-part">
+      <h3><span class="course-part-no">Part {{ $index + 1 }}</span> {{ part.title }}</h3>
+      <p>{{ part.summary }}</p>
+      <ul class="course-can">
+        @for (c of part.competencies; track c) {
+          <li>{{ c }}</li>
+        }
+      </ul>
+      @if (firstLesson(part.title)) {
+        <a class="course-go" [href]="firstLesson(part.title).href">Start Part {{ $index + 1 }} →</a>
+      } @else {
+        <span class="course-soon">Coming soon</span>
+      }
+    </li>
+  }
+</ol>
+
+<style>
+  .course-map {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .course-part {
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 16px 18px;
+    background: var(--surface);
+  }
+  .course-part h3 {
+    margin: 0 0 6px;
+  }
+  .course-part-no {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .course-part p {
+    margin: 0 0 8px;
+    color: var(--muted);
+  }
+  .course-can {
+    margin: 0 0 10px;
+    padding-left: 1.1em;
+    font-size: 0.92rem;
+  }
+  .course-soon {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+</style>
