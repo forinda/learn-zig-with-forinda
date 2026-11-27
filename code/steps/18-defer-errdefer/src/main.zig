@@ -385,8 +385,6 @@ const Race = struct {
     last_leader: usize = 0, // who led after the last step
     winner: ?u8 = null, // nobody yet: an optional is a value or null
 
-    /// A race on `course` with riders A to H at these speeds on the flat and on climbs (riders without
-    /// speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
     // #region from-field
     /// A race on `course` with these riders (copied in). A race needs one to eight.
     fn fromField(course: Course, field: []const Rider) error{ NoRiders, TooManyRiders }!Race {
@@ -398,6 +396,8 @@ const Race = struct {
     }
     // #endregion from-field
 
+    /// A race on `course` with riders A to H at these speeds on the flat and on climbs (riders without
+    /// speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
     fn init(course: Course, speeds_mps: []const f64, climbs_mps: []const f64) Race {
         var race: Race = .{ .course = course, .riders = undefined };
         for (&race.riders, 0..) |*rider, i| {
