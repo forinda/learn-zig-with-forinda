@@ -108,10 +108,14 @@ pub fn main(init: std.process.Init) !void {
     // #region you
     // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
     if (race.riderNamed(you)) |rider| {
-        try out.print("you ({[name]c}) were {[gap]d:.0} m from the line\n", .{
-            .name = rider.name,
-            .gap = race.course.distance_m - rider.position_m,
-        });
+        if (rider.finished(race.course.distance_m)) {
+            try out.print("you ({[name]c}) crossed the line!\n", .{ .name = rider.name });
+        } else {
+            try out.print("you ({[name]c}) were {[gap]d:.0} m from the line\n", .{
+                .name = rider.name,
+                .gap = race.course.distance_m - rider.position_m,
+            });
+        }
     }
     // #endregion you
 
