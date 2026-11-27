@@ -8,21 +8,13 @@ step: 04-values
 
 # Paired with the wrong lesson
 
-## Engage
+## Values
 
-E.
+V.
 
-## Explore
+## In the game
 
-E.
-
-## Explain
-
-E.
-
-## Elaborate
-
-E.
+<<< @/code/steps/04-values/src/main.zig#advance
 
 ::: tip Check your understanding
 [Take the lesson →](/learn/basics/05-making-decisions)

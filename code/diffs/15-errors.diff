@@ -1,0 +1,148 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -54,7 +54,12 @@ pub fn main(init: std.process.Init) !void {
+     try out.print("5% descent: {d:.0} m/s\n", .{speedFor(Terrain.of(-5))});
+ 
+     // The race is one value: the loop steps it and prints what it says happened.
+-    var race = Race.init(compile_pass, &field_speeds_mps, &field_climb_mps);
++    // The course comes from text now. Reading it can fail, so `try`: if the text is wrong, main stops with the error.
++    var segments: [16]Segment = undefined;
++    const course = try parseCourse(course_name, compile_pass_text, &segments);
++    var race = Race.init(course, &field_speeds_mps, &field_climb_mps);
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     while (!race.done()) {
+@@ -74,14 +79,12 @@ pub fn main(init: std.process.Init) !void {
+         };
+     }
+ 
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     try out.print("winner: {c}\n", .{race.winner orelse '?'});
+     // ...and `if` with a capture runs only when there is one.
+     if (race.riderNamed('A')) |you| {
+         try out.print("you (A) were {d:.0} m from the line\n", .{race.course.distance_m - you.position_m});
+     }
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+@@ -187,6 +190,51 @@ const compile_pass: Course = .{
+     },
+ };
+ 
++/// Compile Pass as text, one segment a line: the terrain, its length in metres, and (for climbs and
++/// descents) its gradient in percent. A multiline string: each line starts with `\\`.
++const compile_pass_text =
++    \\flat 4000
++    \\climb 2000 6
++    \\descent 2000 -6
++    \\flat 4500
++;
++
++/// Everything that can be wrong with a course's text: an error set.
++const ParseError = error{ UnknownTerrain, MissingNumber, BadNumber, TooManySegments };
++
++/// Reads a course from `text` into `buf`. Returns the course, or an error saying what was wrong with the text.
++fn parseCourse(name: []const u8, text: []const u8, buf: []Segment) ParseError!Course {
++    var n: usize = 0;
++    var start_m: f64 = 0;
++    var lines = std.mem.tokenizeScalar(u8, text, '\n');
++    while (lines.next()) |line| {
++        if (n == buf.len) return error.TooManySegments;
++        var words = std.mem.tokenizeScalar(u8, line, ' ');
++        const kind = words.next() orelse continue; // an empty line: skip it
++        const length_m = try number(words.next());
++        const gradient_pct: f64 = if (std.mem.eql(u8, kind, "flat"))
++            0
++        else if (std.mem.eql(u8, kind, "climb") or std.mem.eql(u8, kind, "descent"))
++            try number(words.next())
++        else
++            return error.UnknownTerrain;
++        buf[n] = .{ .start_m = start_m, .gradient_pct = gradient_pct };
++        n += 1;
++        start_m += length_m;
++    }
++    return .{ .name = name, .distance_m = start_m, .segments = buf[0..n] };
++}
++
++/// A word as a number: `MissingNumber` when there's no word, `BadNumber` when it isn't one.
++fn number(word: ?[]const u8) ParseError!f64 {
++    const w = word orelse return error.MissingNumber;
++    return std.fmt.parseFloat(f64, w) catch error.BadNumber; // the library's own error becomes ours
++}
++
+ /// Something that happened in the race. One value, one of several kinds, each with its own data:
+ /// a tagged union. A `switch` on it says what to do with each kind.
+ const Event = union(enum) {
+@@ -202,9 +250,7 @@ const Race = struct {
+     clock_s: u32 = 0,
+     next_km_m: f64 = 1000, // the next kilometre marker to report
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
+     /// A race on `course` with riders A to H at these speeds on the flat and on climbs (riders without
+     /// speeds of their own ride at 10 m/s on the flat and 6 m/s on climbs).
+@@ -242,9 +288,7 @@ const Race = struct {
+         }
+         for (self.riders, before_m) |rider, was_m| {
+             if (was_m < self.course.distance_m and rider.finished(self.course.distance_m)) {
+                 if (self.winner == null) self.winner = rider.name; // the first across the line
+                 if (n < events.len) {
+                     events[n] = .{ .finished = rider.name };
+                     n += 1;
+@@ -259,7 +303,6 @@ const Race = struct {
+         return leaderOf(&self.riders);
+     }
+ 
+     /// The rider with this letter, or null if there's none. A pointer, so the caller can change it.
+     fn riderNamed(self: *Race, name: u8) ?*Rider {
+         for (&self.riders) |*rider| {
+@@ -267,7 +310,6 @@ const Race = struct {
+         }
+         return null;
+     }
+ 
+     /// The race is over when the leader crosses the line.
+     fn done(self: *const Race) bool {
+@@ -522,7 +564,6 @@ test "a finisher is reported once" {
+     try std.testing.expect(!hasEvent(race.step(&buf), .{ .finished = 'A' }));
+ }
+ 
+ test "no winner until someone finishes" {
+     var race = Race.init(.{ .name = "Short", .distance_m = 15 }, &.{10}, &.{});
+     var buf: [16]Event = undefined;
+@@ -542,4 +583,36 @@ test "a known name finds that rider" {
+     const rider = race.riderNamed('C') orelse return error.TestExpectedRider;
+     try std.testing.expectEqual(@as(f64, 9), rider.speed_mps);
+ }
++
++test "Compile Pass parses into four segments" {
++    var buf: [8]Segment = undefined;
++    const course = try parseCourse("Compile Pass", compile_pass_text, &buf);
++    try std.testing.expectEqual(@as(usize, 4), course.segments.len);
++    try std.testing.expectEqual(@as(f64, 12_500), course.distance_m);
++    try std.testing.expectEqual(@as(f64, 4000), course.segments[1].start_m);
++    try std.testing.expectEqual(@as(f64, 6), course.segments[1].gradient_pct);
++    try std.testing.expectEqual(Terrain.descent, course.terrainAt(7000));
++}
++
++test "an unknown terrain is an error" {
++    var buf: [8]Segment = undefined;
++    try std.testing.expectError(error.UnknownTerrain, parseCourse("x", "gravel 100", &buf));
++}
++
++test "a missing number is an error" {
++    var buf: [8]Segment = undefined;
++    try std.testing.expectError(error.MissingNumber, parseCourse("x", "flat", &buf));
++    try std.testing.expectError(error.MissingNumber, parseCourse("x", "climb 2000", &buf));
++}
++
++test "a number that isn't one is an error" {
++    var buf: [8]Segment = undefined;
++    try std.testing.expectError(error.BadNumber, parseCourse("x", "flat far", &buf));
++}
++
++test "too many segments for the buffer is an error" {
++    var buf: [1]Segment = undefined;
++    try std.testing.expectError(error.TooManySegments, parseCourse("x", "flat 10\nflat 10", &buf));
++}

@@ -1,11 +1,14 @@
-// The difference between two lesson steps, as a patch (paths like src/main.zig): what `scripts/carry.ts` applies to
-// later steps. `node scripts/diff-steps.ts 09-text-road 10-structs > fix.diff` prints one. (The guide pages show
-// copyable code from each step's regions, not diffs.)
+// Differences between lesson steps. `diffStep` is a patch (paths like src/main.zig) that `scripts/carry.ts` can apply;
+// `displayDiff` is the same without the `// #region` marker lines, for the collapsed "what changed" section at the end
+// of a guide page (code/diffs/NN-slug.diff, written by `pnpm diffs`, checked in CI with `--check`).
+// `node scripts/diff-steps.ts <from> <to>` prints the patch between two steps.
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { STEPS } from './check-steps.ts'
+import { listSteps, STEPS } from './check-steps.ts'
+
+export const DIFFS = fileURLToPath(new URL('../code/diffs/', import.meta.url))
 
 const FILES = ['build.zig', 'build.zig.zon', 'src']
 
@@ -25,11 +28,43 @@ export function diffStep(prev: string, cur: string): string {
   return out.replaceAll(`${a}/`, '').replaceAll(`${b}/`, '').replace(/^index [0-9a-f]+\.\.[0-9a-f]+.*\n/gm, '')
 }
 
+/** `diffStep` without the region marker lines: what a reader compares. */
+export function displayDiff(prev: string, cur: string): string {
+  return diffStep(prev, cur).replace(/^[ +-][ \t]*\/\/ #(end)?region\b.*\n/gm, '')
+}
+
+/** Writes every step's display diff (each step after the first); returns the file names written. */
+export function writeDiffs(steps: string, diffs: string): string[] {
+  mkdirSync(diffs, { recursive: true })
+  const names = listSteps(steps)
+  return names.slice(1).map((name, i) => {
+    writeFileSync(join(diffs, `${name}.diff`), displayDiff(join(steps, names[i]!), join(steps, name)))
+    return `${name}.diff`
+  })
+}
+
+/** The display diffs that are missing or differ from what the steps give now. */
+export function staleDiffs(steps: string, diffs: string): string[] {
+  const names = listSteps(steps)
+  return names.slice(1).flatMap((name, i) => {
+    const file = join(diffs, `${name}.diff`)
+    const want = displayDiff(join(steps, names[i]!), join(steps, name))
+    return existsSync(file) && readFileSync(file, 'utf8') === want ? [] : [`${name}.diff`]
+  })
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [from, to] = process.argv.slice(2)
-  if (!from || !to) {
-    console.error('usage: node scripts/diff-steps.ts <fromStep> <toStep>')
+  const args = process.argv.slice(2)
+  if (args[0] === '--check') {
+    const stale = staleDiffs(STEPS, DIFFS)
+    for (const f of stale) console.error(`stale: code/diffs/${f} (run pnpm diffs)`)
+    if (stale.length) process.exit(1)
+  } else if (args.length === 2) {
+    process.stdout.write(diffStep(join(STEPS, args[0]!), join(STEPS, args[1]!)))
+  } else if (args.length === 0) {
+    for (const f of writeDiffs(STEPS, DIFFS)) console.log(`wrote code/diffs/${f}`)
+  } else {
+    console.error('usage: node scripts/diff-steps.ts [--check | <fromStep> <toStep>]')
     process.exit(2)
   }
-  process.stdout.write(diffStep(join(STEPS, from), join(STEPS, to)))
 }

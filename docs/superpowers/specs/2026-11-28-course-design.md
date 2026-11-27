@@ -200,3 +200,12 @@ Diffs confuse readers and can't be pasted into a file. A guide page's Elaborate 
 copyable code from a named region of its step's source (`<<< @/code/steps/NN-*/src/main.zig#name`, regions
 marked `// #region name` … `// #endregion name`), with where it goes, and ends with the whole file after the
 step in a collapsed section. `code/diffs/` and its CI check are removed; `scripts/carry.ts` stays.
+
+## Decided (Felix, 2026-11-28): guide pages teach the concept, headings name it
+
+Guide pages don't label the teaching steps. Headings name the Zig concept and its forms (a page on loops covers
+`while`, the continue expression, `for` with index/pointers/several lists/ranges, `break`/`continue`/labels, loops
+as values, iterators, and "which loop when" with the consequences of the wrong choice), each with a short,
+verified example tied to the game, "Try it" tips, and the real errors. Then **In the game**: the step's new code
+from its regions with where it goes, and the whole file, visible. A collapsed diff at the very bottom is only for
+comparing (generated, region markers stripped). Model: src/pages/guide/basics/06-loops.md.

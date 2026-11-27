@@ -7,16 +7,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { listSteps } from './check-steps.ts'
-import { diffStep } from './diff-steps.ts'
+import { diffStep, displayDiff, staleDiffs, writeDiffs } from './diff-steps.ts'
 import { carry } from './carry.ts'
 
 const FIXTURE = fileURLToPath(new URL('./fixtures/steps/', import.meta.url))
 
 /** A scratch copy of the fixture steps (tests apply patches to it). */
-function scratch(): { steps: string } {
+function scratch(): { steps: string; diffs: string } {
   const root = mkdtempSync(join(tmpdir(), 'steps-'))
   cpSync(FIXTURE, join(root, 'steps'), { recursive: true })
-  return { steps: join(root, 'steps') }
+  return { steps: join(root, 'steps'), diffs: join(root, 'diffs') }
 }
 
 test('listSteps: step folders only (NN-slug), sorted', () => {
@@ -29,6 +29,20 @@ test("a step's diff shows what changed from the previous step, with plain paths"
   assert.match(d, /^--- src\/main\.zig$/m)
   assert.doesNotMatch(d, /01-a|02-b/)
   assert.doesNotMatch(d, /build\.zig/) // unchanged files aren't in it
+})
+
+test('a display diff leaves out the region markers', () => {
+  const d = displayDiff(join(FIXTURE, '01-a'), join(FIXTURE, '02-b'))
+  assert.match(d, /\+    return "Terminal Tour";/)
+  assert.doesNotMatch(d, /#region|#endregion/)
+})
+
+test('writeDiffs writes one display diff per step after the first; staleDiffs finds an edited one', () => {
+  const { steps, diffs } = scratch()
+  assert.deepEqual(writeDiffs(steps, diffs), ['02-b.diff'])
+  assert.deepEqual(staleDiffs(steps, diffs), [])
+  writeFileSync(join(diffs, '02-b.diff'), 'edited by hand\n')
+  assert.deepEqual(staleDiffs(steps, diffs), ['02-b.diff'])
 })
 
 test('carry applies a fix to every step after the given one', () => {
