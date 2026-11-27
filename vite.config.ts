@@ -4,14 +4,16 @@ import markdown from '@clarusjs/content'
 import { themeDocs } from '@clarusjs/theme-docs/vite.js'
 import { schemas } from './src/schemas.ts'
 
+// GitHub Pages serves the site under /learn-zig-with-forinda/ (BASE in the deploy workflow); locally it's at /.
 export default defineConfig({
+  base: process.env.BASE ?? '/',
   plugins: [
     // The sidebar from src/pages (frontmatter `group` + `order`), search, and llms.txt for AI tools.
     themeDocs({
       llms: {
         title: 'Zero to Hero in Zig',
         summary: 'A course from zero programming to confident Zig 0.17, building a terminal cycling race: basics, memory, data structures, simulation, AI, file I/O, the build system, C libraries and networking.',
-        site: 'http://localhost:5173',
+        site: 'https://forinda.github.io/learn-zig-with-forinda',
       },
     }),
     clarusjs({
