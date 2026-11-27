@@ -21,8 +21,16 @@ The skill isn't avoiding errors. It's reading them.
 
 ## Explore
 
-The course repository has three small programs that are broken on purpose, in `code/broken/03-race-card/`.
-Run each one and read the **first line** of what comes back:
+Here are three small programs, each broken on purpose. Make a folder, save each one there under its name
+(`a.zig`, `b.zig`, `c.zig`), or find them in the course repository in `code/broken/03-race-card/`.
+
+<<< @/code/broken/03-race-card/a.zig [a.zig]
+
+<<< @/code/broken/03-race-card/b.zig [b.zig]
+
+<<< @/code/broken/03-race-card/c.zig [c.zig]
+
+In that folder, run each one and read the **first line** of what comes back:
 
 ```sh
 zig run a.zig
@@ -113,5 +121,6 @@ your town) and change the constants to describe it. Then:
 2. Make the field 12 riders. The box's right edge moves. Why? Fix it.
 3. Break your code on purpose in one of the three ways from this lesson, and read the error before you fix it.
 
-Hint for 2: `8 riders` is shorter than `12 riders`, and the padding after it doesn't know. One way is to print
-the number with a fixed width, like `{d:>2}`.
+Hint for 2: `12 riders` is one character longer than `8 riders`, and the padding after it doesn't know. Print
+the number with a fixed width, `{d:>2}` (two characters, so ` 8` and `12` take the same room), and take one space
+off the padding after it: `{s:<9}`.

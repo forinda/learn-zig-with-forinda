@@ -1,5 +1,6 @@
-// Builds and tests every lesson step with Zig 0.17: `node scripts/check-steps.ts [filter]` (CI runs it on Linux,
-// macOS and Windows). One line per step, exit 1 when any fails. `filter` keeps steps whose name contains it.
+// Builds, tests and runs every lesson step with Zig 0.17: `node scripts/check-steps.ts [filter]` (CI runs it on
+// Linux, macOS and Windows). Running it checks the real terminal output path too: the program must exit cleanly and
+// print something. One line per step, exit 1 when any fails. `filter` keeps steps whose name contains it.
 import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -16,11 +17,11 @@ export function listSteps(dir: string): string[] {
     .sort()
 }
 
-/** Run `zig <args>` in `cwd`; null when it worked, else the first error line. */
-function zig(cwd: string, args: string[]): string | null {
-  const r = spawnSync('zig', args, { cwd, encoding: 'utf8' })
+/** Run `zig <args>` in `cwd`; null when it worked, else the first error line. `output`: stdout must not be empty. */
+function zig(cwd: string, args: string[], output = false): string | null {
+  const r = spawnSync('zig', args, { cwd, encoding: 'utf8', input: '' })
   if (r.error) return `zig not found: ${r.error.message}`
-  if (r.status === 0) return null
+  if (r.status === 0) return output && !r.stdout.trim() ? `${args.join(' ')}: printed nothing` : null
   const out = `${r.stderr}\n${r.stdout}`
   return out.split('\n').find((l) => /error/i.test(l))?.trim() ?? `exit ${r.status}`
 }
@@ -35,7 +36,7 @@ function main(): void {
   let failed = 0
   for (const step of listSteps(STEPS).filter((s) => s.includes(filter))) {
     const dir = join(STEPS, step)
-    const error = zig(dir, ['build']) ?? zig(dir, ['build', 'test'])
+    const error = zig(dir, ['build']) ?? zig(dir, ['build', 'test']) ?? zig(dir, ['build', 'run'], true)
     console.log(error ? `FAIL ${step}: ${error}` : `ok ${step}`)
     if (error) failed++
   }

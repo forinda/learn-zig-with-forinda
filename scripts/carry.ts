@@ -13,11 +13,16 @@ export function carry(steps: string, from: string, patch: string, opts = { test:
   const applied: string[] = []
   for (const step of listSteps(steps).filter((s) => s > from)) {
     const dir = join(steps, step)
-    // run in the step's folder: git apply resolves the patch's paths (src/main.zig) from there, in a repo or not
-    const args = ['apply', '-p0', resolve(patch)]
-    const check = spawnSync('git', [...args.slice(0, 1), '--check', ...args.slice(1)], { cwd: dir, encoding: 'utf8' })
-    if (check.status !== 0) return { applied, failedAt: step }
-    spawnSync('git', args, { cwd: dir, encoding: 'utf8' })
+    // In a git repo, git apply reads the patch's paths from the repo's top and silently skips files outside the
+    // folder it runs in: run it from the top with --directory pointing at this step. Outside a repo, run it here.
+    const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: dir, encoding: 'utf8' })
+    const prefix = spawnSync('git', ['rev-parse', '--show-prefix'], { cwd: dir, encoding: 'utf8' })
+    const inRepo = top.status === 0 && prefix.status === 0
+    const cwd = inRepo ? top.stdout.trim() : dir
+    const args = ['apply', '-v', '-p0', ...(inRepo ? [`--directory=${prefix.stdout.trim()}`] : []), resolve(patch)]
+    const ok = (r: ReturnType<typeof spawnSync>) => r.status === 0 && !/Skipped patch/.test(String(r.stderr))
+    if (!ok(spawnSync('git', [args[0]!, '--check', ...args.slice(1)], { cwd, encoding: 'utf8' }))) return { applied, failedAt: step }
+    if (!ok(spawnSync('git', args, { cwd, encoding: 'utf8' }))) return { applied, failedAt: step }
     if (opts.test && spawnSync('zig', ['build', 'test'], { cwd: dir, stdio: 'inherit' }).status !== 0) return { applied, failedAt: step }
     applied.push(step)
   }

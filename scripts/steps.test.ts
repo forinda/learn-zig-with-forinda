@@ -2,13 +2,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { listSteps } from './check-steps.ts'
 import { diffStep, staleDiffs, writeDiffs } from './diff-steps.ts'
 import { carry } from './carry.ts'
 
-const FIXTURE = new URL('./fixtures/steps/', import.meta.url).pathname
+const FIXTURE = fileURLToPath(new URL('./fixtures/steps/', import.meta.url))
 
 /** A scratch copy of the fixture steps (tests write diffs and apply patches). */
 function scratch(): { steps: string; diffs: string } {
@@ -46,5 +48,17 @@ test('carry applies a fix to every step after the given one', () => {
   const r = carry(steps, '00', patch, { test: false })
   assert.deepEqual(r.applied, ['01-a'])
   assert.equal(r.failedAt, '02-b')
+  assert.match(readFileSync(join(steps, '01-a', 'src', 'main.zig'), 'utf8'), /return "X";/)
+})
+
+test('carry applies inside a git repository too (where git apply resolves paths from the top)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'repo-'))
+  const steps = join(root, 'code', 'steps')
+  cpSync(FIXTURE, steps, { recursive: true })
+  for (const args of [['init', '-q'], ['add', '-A'], ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'x']]) spawnSync('git', args, { cwd: root })
+  const patch = join(root, 'fix.diff')
+  writeFileSync(patch, diffStep(join(steps, '01-a'), join(steps, '02-b')).replaceAll('Terminal Tour', 'X'))
+  const r = carry(steps, '00', patch, { test: false })
+  assert.deepEqual(r.applied, ['01-a'])
   assert.match(readFileSync(join(steps, '01-a', 'src', 'main.zig'), 'utf8'), /return "X";/)
 })

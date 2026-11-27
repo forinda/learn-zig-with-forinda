@@ -83,6 +83,9 @@ zig build test --summary all
 Build Summary: 3/3 steps succeeded; 1/1 tests passed
 ```
 
+Run it again and the count disappears (`Build Summary: 3/3 steps succeeded`): nothing changed, so Zig reuses the
+last result instead of running the tests again. Change the code and they run again.
+
 Now break it on purpose: change `"Terminal Tour"` in `title()` to `"Terminal Tor"` and run the test again. Read
 what it says: what it expected, and what it found. Put the name back.
 

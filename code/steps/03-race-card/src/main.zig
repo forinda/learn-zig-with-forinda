@@ -17,6 +17,7 @@ pub fn main(init: std.process.Init) !void {
     try out.flush();
 }
 
+/// The game's name, in one place: the screen and the test both use it.
 fn title() []const u8 {
     return "Terminal Tour";
 }
