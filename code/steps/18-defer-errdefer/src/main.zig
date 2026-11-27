@@ -19,7 +19,9 @@ const Rider = struct {
     speed_mps: f64,
     climb_mps: f64 = 6.0, // its speed on a climb
     position_m: f64 = 0, // a default: every rider starts at the line
+    // #region full-name
     full_name: []const u8 = "", // its name on the roster (owned by whoever loaded the roster)
+    // #endregion full-name
 
     /// Moves this rider on by `dt` seconds. It changes the rider, so it takes `*Rider`.
     fn advance(self: *Rider, dt: f64) void {
@@ -115,11 +117,13 @@ pub fn main(init: std.process.Init) !void {
     }
 
     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+    // #region winner
     if (race.winner) |w| {
         try out.print("winner: {c} ({s})\n", .{ w, race.riderNamed(w).?.full_name });
     } else {
         try out.print("winner: ?\n", .{});
     }
+    // #endregion winner
     // ...and `if` with a capture runs only when there is one.
     // Named arguments: each hole says which value it wants, so the text reads like the sentence it prints.
     if (race.riderNamed(you)) |rider| {
