@@ -14,6 +14,9 @@
 <ol class="course-map">
   @for (part of parts; track part.slug) {
     <li class="course-part">
+      @if (part.art) {
+        <img class="course-art" [src]="part.art" alt="" width="400" height="300" loading="lazy" />
+      }
       <h3><span class="course-part-no">Part {{ $index + 1 }}</span> {{ part.title }}</h3>
       <p>{{ part.summary }}</p>
       <ul class="course-can">
@@ -43,6 +46,14 @@
     border-radius: 12px;
     padding: 16px 18px;
     background: var(--surface);
+  }
+  .course-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 150px;
+    object-fit: contain;
+    margin-bottom: 8px;
   }
   .course-part h3 {
     margin: 0 0 6px;

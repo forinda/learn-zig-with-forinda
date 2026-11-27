@@ -44,3 +44,17 @@ h1, h2, h3, h4,
   font-family: var(--mono);
   letter-spacing: -0.02em;
 }
+
+/* The course's illustrations (public/art): Agama, the red-headed lizard who rides through the course. */
+.hero-art {
+  display: block;
+  width: min(100%, 420px);
+  height: auto;
+  margin: 8px auto 16px;
+}
+.lesson-art {
+  display: block;
+  width: min(100%, 320px);
+  height: auto;
+  margin: 16px auto;
+}

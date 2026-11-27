@@ -19,6 +19,8 @@ sprint for the line. Every game like that starts the same way: a program that pr
 
 Today you'll write that line: the game's name, **Terminal Tour**.
 
+<img class="lesson-art" src="/art/agama-hello.svg" alt="Agama, the course's lizard, waving beside a terminal that says Terminal Tour" width="400" height="300" />
+
 ## Explore
 
 First, check Zig is ready. Open a terminal and run:

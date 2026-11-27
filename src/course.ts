@@ -3,13 +3,15 @@
 // one of its part's (tests/pages.test.ts). Part titles match src/groups.ts; slugs are the folders under
 // src/pages/learn/.
 
-export type Part = { slug: string; title: string; summary: string; competencies: string[] }
+/** `art`: the part's illustration in public/art (the course map shows it), when it has one. */
+export type Part = { slug: string; title: string; summary: string; competencies: string[]; art?: string }
 
 export const parts: Part[] = [
   {
     slug: 'start',
     title: 'Start',
     summary: 'Install Zig, write your first program, build, run and test it, and learn to read the compiler.',
+    art: '/art/agama-hello.svg',
     competencies: [
       'I can install Zig 0.17 and check its version',
       'I can create, build, run and test a Zig project',

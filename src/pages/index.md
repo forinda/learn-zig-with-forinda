@@ -7,6 +7,8 @@ order: 1
 
 # Zero to Hero in Zig
 
+<img class="hero-art" src="/art/agama-rider.svg" alt="Agama, the course's red-headed lizard, racing a road bike in a Zig-orange helmet" width="480" height="360" />
+
 Learn to program in Zig from zero by building one game: **Terminal Tour**, a cycling race in your terminal.
 You ride, rivals race you, a breakaway goes up the road, the bunch chases, and you sprint for the line.
 

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-labelledby="t">
+  <title id="t">Agama waving beside a terminal that says Terminal Tour</title>
+  <defs>
+    <style>
+      .ol { stroke: #1d1a16; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+  <ellipse cx="200" cy="284" rx="170" ry="9" fill="#000" opacity="0.12"/>
+
+  <!-- the terminal -->
+  <g>
+    <rect x="186" y="56" width="196" height="150" rx="14" fill="#1f2328" class="ol" stroke-width="6"/>
+    <path d="M186 84 h196" stroke="#1d1a16" stroke-width="5"/>
+    <circle cx="206" cy="70" r="5" fill="#ff6a2b"/>
+    <circle cx="222" cy="70" r="5" fill="#f7a41d"/>
+    <circle cx="238" cy="70" r="5" fill="#34b98a"/>
+    <text x="204" y="118" font-family="ui-monospace, monospace" font-size="15" fill="#9aa3ad">$ zig build run</text>
+    <text x="204" y="146" font-family="ui-monospace, monospace" font-size="17" font-weight="700" fill="#f7a41d">Terminal Tour</text>
+    <rect x="204" y="160" width="10" height="18" fill="#e6e6e6"/>
+    <path d="M262 206 l-10 40 h56 l-10 -40" fill="#9aa3ad" class="ol" stroke-width="6"/>
+    <path d="M232 248 h96" class="ol" stroke-width="10"/>
+  </g>
+
+  <!-- tail curling behind -->
+  <path class="ol" d="M104 236 C70 248 40 240 34 214 C30 196 44 186 58 192" fill="none" stroke-width="22"/>
+  <path d="M104 236 C70 248 40 240 34 214 C30 196 44 186 58 192" fill="none" stroke="#2f6fe0" stroke-width="13" stroke-linecap="round"/>
+  <path d="M38 228 C34 214 36 200 46 192" fill="none" stroke="#ff6a2b" stroke-width="13" stroke-linecap="round"/>
+
+  <!-- legs -->
+  <path class="ol" d="M104 226 L96 274 M134 226 L142 274" fill="none" stroke-width="24"/>
+  <path d="M104 226 L96 274 M134 226 L142 274" fill="none" stroke="#2457b8" stroke-width="14" stroke-linecap="round"/>
+  <ellipse cx="92" cy="276" rx="17" ry="8" fill="#1d3f8f" class="ol" stroke-width="5"/>
+  <ellipse cx="148" cy="276" rx="17" ry="8" fill="#1d3f8f" class="ol" stroke-width="5"/>
+
+  <!-- back crest -->
+  <path class="ol" d="M94 168 l-14 -6 l10 -10 l-14 -8 l14 -8 l-12 -12 l16 -4 l-8 -14 l18 2" fill="#1d3f8f" stroke-width="5"/>
+
+  <!-- body, upright -->
+  <path class="ol" d="M90 150 C86 118 102 98 124 98 C148 98 160 120 158 152 C156 190 152 230 120 232 C94 234 92 196 90 150 Z" fill="#2f6fe0" stroke-width="6"/>
+  <path d="M132 112 C146 140 146 190 132 222" fill="none" stroke="#8fb4ff" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- arm on the hip -->
+  <path class="ol" d="M100 132 L82 170 L100 188" fill="none" stroke-width="20"/>
+  <path d="M100 132 L82 170 L100 188" fill="none" stroke="#2f6fe0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- head -->
+  <path class="ol" d="M96 76 C94 48 116 34 140 38 C164 42 180 56 180 72 C180 88 164 94 144 94 C124 96 98 96 96 76 Z" fill="#ff6a2b" stroke-width="6"/>
+  <path d="M106 86 C124 90 148 90 170 84" fill="none" stroke="#e0521a" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="156" cy="76" rx="8" ry="5" fill="#ffb199" opacity="0.9"/>
+  <path d="M140 82 C152 88 166 86 176 78" fill="none" stroke="#1d1a16" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="136" cy="62" r="12" fill="#fff" class="ol" stroke-width="4"/>
+  <circle cx="141" cy="63" r="6" fill="#1d1a16"/>
+  <circle cx="143" cy="60" r="2" fill="#fff"/>
+  <circle cx="173" cy="64" r="2.5" fill="#1d1a16"/>
+
+  <!-- helmet -->
+  <path class="ol" d="M98 62 C96 34 120 20 144 24 C166 28 178 40 176 52 C158 46 124 52 98 62 Z" fill="#f7a41d" stroke-width="6"/>
+  <path d="M116 38 l8 12 M134 30 l6 14 M152 30 l4 14" stroke="#1d1a16" stroke-width="4" stroke-linecap="round"/>
+  <!-- waving arm -->
+  <path class="ol" d="M150 126 L186 112 L200 42" fill="none" stroke-width="20"/>
+  <path d="M150 126 L186 112 L200 42" fill="none" stroke="#2f6fe0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="201" cy="36" r="10" fill="#1d3f8f" class="ol" stroke-width="5"/>
+  <path d="M216 26 q8 6 6 16 M224 14 q12 10 8 26" fill="none" stroke="#f7a41d" stroke-width="4" stroke-linecap="round"/>
+
+</svg>
