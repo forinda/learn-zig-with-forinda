@@ -22,7 +22,8 @@ export function diffStep(prev: string, cur: string): string {
     if (r.status !== 0 && r.status !== 1) throw new Error(`git diff ${a}/${f} ${b}/${f}: ${r.stderr}`)
     out += r.stdout
   }
-  return out.replaceAll(`${a}/`, '').replaceAll(`${b}/`, '')
+  // plain paths, and no `index <hash>..<hash>` lines: noise for a reader, not needed to apply the patch
+  return out.replaceAll(`${a}/`, '').replaceAll(`${b}/`, '').replace(/^index [0-9a-f]+\.\.[0-9a-f]+.*\n/gm, '')
 }
 
 /** Writes every step's diff (each step after the first); returns the file names written. */

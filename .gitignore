@@ -4,3 +4,5 @@ dist/
 .netlify/
 *.log
 .superpowers/
+.zig-cache/
+zig-out/

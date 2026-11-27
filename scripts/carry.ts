@@ -13,10 +13,8 @@ export function carry(steps: string, from: string, patch: string, opts = { test:
   const applied: string[] = []
   for (const step of listSteps(steps).filter((s) => s > from)) {
     const dir = join(steps, step)
-    // inside a git repo, git apply resolves paths from the repo's top: point it at this step's folder
-    const prefix = spawnSync('git', ['rev-parse', '--show-prefix'], { cwd: dir, encoding: 'utf8' })
-    const where = prefix.status === 0 && prefix.stdout.trim() ? ['--directory', prefix.stdout.trim()] : []
-    const args = ['apply', '-p0', ...where, resolve(patch)]
+    // run in the step's folder: git apply resolves the patch's paths (src/main.zig) from there, in a repo or not
+    const args = ['apply', '-p0', resolve(patch)]
     const check = spawnSync('git', [...args.slice(0, 1), '--check', ...args.slice(1)], { cwd: dir, encoding: 'utf8' })
     if (check.status !== 0) return { applied, failedAt: step }
     spawnSync('git', args, { cwd: dir, encoding: 'utf8' })

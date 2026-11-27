@@ -1,0 +1,53 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -1,22 +1,47 @@
+ const std = @import("std");
+ 
++// The first race. Constants: they never change while the program runs.
++const course_name = "Ngong Road";
++const distance_km: f64 = 12.5;
++const riders: u32 = 8;
++
+ pub fn main(init: std.process.Init) !void {
+     // Text goes to the terminal through a writer. It collects text in a buffer...
+     var buffer: [1024]u8 = undefined;
+     var stdout: std.Io.File.Writer = .init(.stdout(), init.io, &buffer);
+     const out = &stdout.interface;
+ 
+-    try out.print("{s}\n", .{title()});
++    try raceCard(out);
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+ }
+ 
+-/// The game's name, in one place: the screen and the test both use it.
+ fn title() []const u8 {
+     return "Terminal Tour";
+ }
+ 
++/// The race card: the game's title and what today's race is, in a box.
++fn raceCard(w: *std.Io.Writer) !void {
++    try w.print("+------------------------------+\n", .{});
++    try w.print("| {s:<28} |\n", .{title()});
++    try w.print("|                              |\n", .{});
++    try w.print("| Course:   {s:<18} |\n", .{course_name});
++    try w.print("| Distance: {d:>5.1} km{s:<10} |\n", .{ distance_km, "" });
++    try w.print("| Field:    {d} riders{s:<10} |\n", .{ riders, "" });
++    try w.print("+------------------------------+\n", .{});
++}
++
+ test "the game has a title" {
+     try std.testing.expectEqualStrings("Terminal Tour", title());
+ }
++
++test "race card lists the course, distance and riders" {
++    var buf: [512]u8 = undefined;
++    var w: std.Io.Writer = .fixed(&buf);
++    try raceCard(&w);
++    const card = w.buffered();
++    try std.testing.expect(std.mem.indexOf(u8, card, "Ngong Road") != null);
++    try std.testing.expect(std.mem.indexOf(u8, card, "12.5 km") != null);
++    try std.testing.expect(std.mem.indexOf(u8, card, "8 riders") != null);
++}
