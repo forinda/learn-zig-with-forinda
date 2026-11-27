@@ -1,6 +1,6 @@
 ---
 title: "How the course works"
-description: "Lessons in five steps, the code for every step, quizzes, exercises and your progress."
+description: "Read in the Guide, check in the Course: the code for every step, quizzes, exercises and your progress."
 group: "Welcome"
 order: 2
 ---

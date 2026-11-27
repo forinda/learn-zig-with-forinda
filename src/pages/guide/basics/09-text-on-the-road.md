@@ -53,12 +53,15 @@ road[3] = 'B'    'A'  '-'  '-'  'B'  '-'  '-'  '-'  '-'
 
 A rider's column is how far along the course it is (0 at the start, 1 at the line) times the last column, as a
 whole number: `@intFromFloat(along * last)`. That rounds down, so halfway along 8 columns (3.5) is column 3.
+`@min(a, b)` gives the smaller of two values: `@min(position_m / distance_m, 1.0)` keeps a rider past the line on the
+last column instead of off the end of the road.
 
 ## Elaborate
 
 **I do:** `drawRoad` fills a buffer with dashes and puts each rider's letter in its column. Riders close together land
-in the same column, and the last letter written there is the one you see, so it writes the leader last: the race's
-leader always shows. Here's the change:
+in the same column, and the last letter written there is the one you see. So it writes the rest of the field first,
+then you (rider A), then the leader: the leader always shows, and so do you, unless you're in the leader's column.
+Here's the change:
 
 <<< @/code/diffs/09-text-road.diff
 
@@ -75,13 +78,14 @@ km 2 at 3:13: leader is B
   -------B------------------------------------------
 ...
 km 9 at 14:26: leader is B
-  --------------------------------EGHB--------------
+  --------------------------------EAHB--------------
 km 12 at 19:14: leader is B
-  -------------------------------------------EGDHB--
+  -------------------------------------------EGAHB--
 B wins in 20:02
 ```
 
-Watch the field spread out: at the start everyone shares a column, and by the end they're strung out behind B.
+Watch the field spread out: at the start everyone shares the leader's column, and by the end you can pick out
+several riders behind B (riders still sharing a column hide each other).
 
 
 ::: tip Check your understanding

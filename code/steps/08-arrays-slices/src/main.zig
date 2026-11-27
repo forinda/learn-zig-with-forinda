@@ -6,7 +6,7 @@ const distance_km: f64 = 12.5;
 const riders: u32 = 8;
 
 // Each rider's speed on a flat road, in metres per second: rider A is the first, H the last.
-const speeds_mps = [_]f64{ 10.0, 10.4, 9.8, 10.1, 9.6, 10.2, 9.9, 10.3 };
+const field_speeds_mps = [_]f64{ 10.0, 10.4, 9.8, 10.1, 9.6, 10.2, 9.9, 10.3 };
 
 // How far the race moves on each tick of the clock, in seconds.
 const dt_s: f64 = 1.0;
@@ -26,11 +26,11 @@ pub fn main(init: std.process.Init) !void {
 
     // Eight riders, A to H, each with its own speed: one array of speeds, one of positions.
     const distance_m = distance_km * 1000;
-    var positions_m: [speeds_mps.len]f64 = @splat(0); // one position per rider, all at the start
+    var positions_m: [field_speeds_mps.len]f64 = @splat(0); // one position per rider, all at the start
     var seconds: u32 = 0;
     var next_km_m: f64 = 1000;
     while (!finished(positions_m[leader(&positions_m)], distance_m)) {
-        advanceAll(&positions_m, &speeds_mps, dt_s);
+        advanceAll(&positions_m, &field_speeds_mps, dt_s);
         seconds += 1;
         if (positions_m[leader(&positions_m)] >= next_km_m) {
             try out.print("km {d:.0} at ", .{next_km_m / 1000});
@@ -103,8 +103,8 @@ fn printTime(w: *std.Io.Writer, seconds: u32) !void {
 }
 
 /// Moves every rider on by `dt` seconds at its own speed. `positions_m` is a slice it can change.
-fn advanceAll(positions_m: []f64, speeds_m: []const f64, dt: f64) void {
-    for (positions_m, speeds_m) |*position_m, speed_mps| {
+fn advanceAll(positions_m: []f64, speeds_mps: []const f64, dt: f64) void {
+    for (positions_m, speeds_mps) |*position_m, speed_mps| {
         position_m.* = advance(position_m.*, speed_mps, dt);
     }
 }

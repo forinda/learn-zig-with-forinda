@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { groups } from '../src/groups.ts'
 import { parts } from '../src/course.ts'
-import { guideProblems, lessonProblems, mdUnder, orderProblems, stretchProblems } from './rules.ts'
+import { guideProblems, lessonProblems, mdUnder, orderProblems, pairProblems, stretchProblems } from './rules.ts'
 
 const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url))
 const GUIDE = fileURLToPath(new URL('../src/pages/guide/', import.meta.url))
@@ -12,6 +12,7 @@ const LEARN = fileURLToPath(new URL('../src/pages/learn/', import.meta.url))
 const STEPS = fileURLToPath(new URL('../code/steps/', import.meta.url))
 const BROKEN_LESSON = fileURLToPath(new URL('./fixtures/learn/start/broken-lesson.md', import.meta.url))
 const BROKEN_GUIDE = fileURLToPath(new URL('./fixtures/guide/start/broken-guide.md', import.meta.url))
+const WRONG_PAIR = fileURLToPath(new URL('./fixtures/pair/guide/basics/04-values-and-types.md', import.meta.url))
 
 test('the parts in src/course.ts are the guide and course groups, in order', () => {
   assert.deepEqual(parts.map((p) => p.title), groups.learn.map((g) => g.title))
@@ -43,4 +44,10 @@ test('the rules catch a broken lesson', () => {
   for (const rule of ['folder:', 'steps:', 'quiz:', 'Predict:', 'Fix it:', 'Build it: no zig build test', 'Build it: no ### Exercise', 'guide:', 'step:', 'competency:', 'code:']) {
     assert.ok(problems.includes(rule), `expected "${rule}" in:\n${problems}`)
   }
+})
+
+test('a guide page links to its own lesson (same part, same name), and every guide page has a lesson and back', () => {
+  const problems = guideProblems(WRONG_PAIR, STEPS, PAGES).join('\n')
+  assert.ok(problems.includes('lesson: links to /learn/basics/05-making-decisions'), problems)
+  assert.deepEqual(pairProblems(PAGES), [])
 })

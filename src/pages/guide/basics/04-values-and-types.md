@@ -43,7 +43,7 @@ A **constant** (`const`) is a value that never changes. A **variable** (`var`) i
 it both ways: you can't change a constant, and if you make a `var` but never change it, the compiler tells you:
 
 ```text
-values.zig:3:9: error: local variable is never mutated
+values.zig:5:9: error: local variable is never mutated
 ```
 
 Use `const` unless the value really changes. It's one less thing to keep track of.
@@ -78,6 +78,23 @@ One more surprise: dividing two whole numbers gives a whole number, and the rest
 ```text
 half of 7 laps is 3
 ```
+
+To keep the half, make it a float first: `@as(f64, @floatFromInt(laps)) / 2` gives `3.5`.
+
+Whole numbers that can be negative (`i32`) are stricter still. Should `-5 / 2` be `-2` or `-3`? Zig won't guess:
+
+```zig
+fn halfGradient(gradient_pct: i32) i32 {
+    return gradient_pct / 2;
+}
+```
+
+```text
+error: division with 'i32' and 'comptime_int': signed integers must use @divTrunc, @divFloor, @divCeil, or @divExact
+```
+
+You say which you mean: `@divTrunc(gradient_pct, 2)` drops the rest towards zero (`-2`), `@divFloor` rounds down
+(`-3`).
 
 ## Elaborate
 

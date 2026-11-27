@@ -44,11 +44,23 @@ riders.zig:5:90: error: index 3 outside array of length 3
 ```
 
 When the index is only known while the program runs (counted in a loop, say), the check happens then, and the program
-stops instead of reading memory that isn't the array's:
+stops instead of reading memory that isn't the array's. This loop goes one step too far (`<=` instead of `<`):
+
+```zig
+var i: usize = 0;
+while (i <= speeds_mps.len) : (i += 1) {
+    std.debug.print("{d}\n", .{speeds_mps[i]});
+}
+```
 
 ```text
-thread 368323 panic: index out of bounds: index 3, len 3
+10
+10.4
+9.8
+thread 468387 panic: index out of bounds: index 3, len 3
 ```
+
+(`: (i += 1)` after the condition runs at the end of each round: a tidy place for the counter.)
 
 To give every element the same starting value, use `@splat`:
 
@@ -77,7 +89,9 @@ Pass an array to a slice parameter with `&`: `leader(&positions_m)`.
 
 **I do:** the field gets one array of speeds (rider A to H) and one of positions. `advanceAll` moves everyone by
 one tick, changing the positions in place through a `[]f64`. `leader` reads them through a `[]const f64` and
-returns the index of the furthest, and `riderName` turns an index into a letter (`'A' + 1` is `'B'`):
+returns the index of the furthest, and `riderName` turns an index into a letter. Letters are numbers in Zig (the
+next lesson's subject), so `'A' + 1` is `'B'`; `@intCast` turns the `usize` index into the `u8` a letter needs (it
+checks the number fits), and `{c}` prints a `u8` as its character:
 
 <<< @/code/diffs/08-arrays-slices.diff
 

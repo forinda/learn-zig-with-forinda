@@ -71,10 +71,10 @@ error: error union of type 'error{}!void' is ignored
 - [x] try std.testing.expectEqual(4, 2 + 2);
 - [ ] Change 4 to 5
 - [ ] Remove the test name
-- [ ] return std.testing.expectEqual(4, 2 + 2);
+- [ ] _ = std.testing.expectEqual(4, 2 + 2);
 
 A check that fails returns an error. `try` hands it to the test runner, which reports the test as failed. Without
-`try`, Zig won't let you ignore it.
+`try`, Zig won't let you ignore it, and throwing it away with `_ =` is refused too: `error union is discarded`.
 :::
 
 ## Build it

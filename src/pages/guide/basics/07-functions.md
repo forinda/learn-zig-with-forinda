@@ -18,7 +18,8 @@ When you need the same thing in many places, you write it once, give it a name, 
 
 ## Explore
 
-You've used functions since lesson 1: `title()`, `advance(...)`, `finished(...)`. Look at `advance` in your
+You've used functions for a while: `main` from the very first program, then `title()`, `advance(...)` and
+`finished(...)`. Look at `advance` in your
 `src/main.zig`:
 
 ```zig

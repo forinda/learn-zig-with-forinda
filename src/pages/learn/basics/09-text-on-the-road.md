@@ -79,6 +79,7 @@ Mark the player: rider A is drawn as `@` instead of `A`. Write a test first that
 column 0 holds `@`.
 
 Hint: `riderName` is used for the letter. Where would you choose `@` for index 0 without changing the other riders?
+When you run it, `@` shows from about km 5: before that you're in the leader's column, and the leader is drawn last.
 
 ```sh
 zig build run
@@ -94,4 +95,5 @@ zig build test --summary all
 - Show the gap from the leader to last place in metres on each line.
 - Something else that makes the race easier to read.
 
-Any answer that passes its own test and prints a clearer road counts.
+Any answer that passes its own test and prints a clearer road counts. Mind the drawing order: whatever is written
+last in a column is what shows, so write a finish line before the riders, not after.

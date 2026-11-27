@@ -67,8 +67,10 @@ export function guideProblems(file: string, stepsDir: string, pagesDir: string):
   const h = h2s(b)
   if (h.join('|') !== GUIDE_STEPS.join('|')) problems.push(`sections: [${h.join(', ')}], expected [${GUIDE_STEPS.join(', ')}]`)
   const lessons = linkedPages(b, 'learn', pagesDir)
+  const own = `/learn/${basename(dirname(file))}/${basename(file, '.md')}`
   if (!lessons.length) problems.push('lesson: no link to its lesson (/learn/...)')
-  else if (!existsSync(lessons.at(-1)!)) problems.push(`lesson: ${lessons.at(-1)} doesn't exist`)
+  else if (lessons.at(-1) !== join(pagesDir, `${own}.md`)) problems.push(`lesson: links to ${lessons.at(-1)!.slice(pagesDir.length - 1, -3)}, expected its own lesson ${own}`)
+  else if (!existsSync(lessons.at(-1)!)) problems.push(`lesson: ${own} doesn't exist`)
   return problems
 }
 
@@ -88,11 +90,24 @@ export function lessonProblems(file: string, stepsDir: string, pagesDir: string)
   if (!/zig build test/.test(build)) problems.push('Build it: no zig build test')
   if (!/^### Exercise/m.test(build)) problems.push('Build it: no ### Exercise')
   const guides = linkedPages(b.split(/^## /m)[0] ?? '', 'guide', pagesDir)
+  const own = `/guide/${basename(dirname(file))}/${basename(file, '.md')}`
   if (!guides.length) problems.push('guide: no "read first" link to its guide page (/guide/...) before the first step')
-  else if (!existsSync(guides[0]!)) problems.push(`guide: ${guides[0]} doesn't exist`)
+  else if (guides[0] !== join(pagesDir, `${own}.md`)) problems.push(`guide: links to ${guides[0]!.slice(pagesDir.length - 1, -3)}, expected its own guide page ${own}`)
+  else if (!existsSync(guides[0]!)) problems.push(`guide: ${own} doesn't exist`)
   const part = parts.find((p) => p.title === fm.group)
   if (part && !part.competencies.includes(fm.competency ?? '')) problems.push(`competency: "${fm.competency}" isn't listed for ${part.title} in src/course.ts`)
   return problems
+}
+
+/** Every guide page has a lesson at the same path under learn/, and every lesson a guide page. */
+export function pairProblems(pagesDir: string): string[] {
+  const rel = (section: string) => mdUnder(join(pagesDir, section)).map((f) => f.slice(join(pagesDir, section).length))
+  const guide = new Set(rel('guide'))
+  const learn = new Set(rel('learn'))
+  return [
+    ...[...guide].filter((f) => !learn.has(f)).map((f) => `pair: guide${f} has no lesson learn${f}`),
+    ...[...learn].filter((f) => !guide.has(f)).map((f) => `pair: learn${f} has no guide page guide${f}`),
+  ]
 }
 
 /** Pages of each part ordered 1..n with no gaps or repeats. */
