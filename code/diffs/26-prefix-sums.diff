@@ -15,7 +15,7 @@ diff --git src/main.zig src/main.zig
  };
  
  const compile_pass: Course = .{
-@@ -410,15 +408,92 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
+@@ -410,15 +408,94 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
      for (race.order, 1..) |index, place| {
          const rider = race.riders[index];
          try w.print("{d:>4}  {c}  {s:<10}", .{ place, rider.name, rider.full_name });
@@ -104,7 +104,7 @@ diff --git src/main.zig src/main.zig
  /// The kinds of mark on a course, in the order they're announced when two share a metre.
  const MarkKind = enum { km, climb_start, climb_top, to_go };
  
-@@ -478,6 +553,11 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+@@ -478,6 +555,11 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
      var race = try Race.fromField(course, field);
      race.marks = try planMarks(race_gpa, course); // in the race's arena, gone with it
      try race.trackOrder(race_gpa);
@@ -114,7 +114,7 @@ diff --git src/main.zig src/main.zig
      var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
      var events: [16]Event = undefined;
      // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
-@@ -620,6 +700,9 @@ const Race = struct {
+@@ -620,6 +702,9 @@ const Race = struct {
      clock_s: u32 = 0,
      marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
      order: []usize = &.{}, // rider indexes, leader first (once `trackOrder` has made room for them)
@@ -122,7 +122,7 @@ diff --git src/main.zig src/main.zig
      last_leader: usize = 0, // who led after the last step
      winner: ?u8 = null, // nobody yet: an optional is a value or null
  
-@@ -654,6 +737,11 @@ const Race = struct {
+@@ -654,6 +739,11 @@ const Race = struct {
          // Riders rarely swap places in one second, so the order is nearly sorted already: insertion sort
          // only has to move the few who changed places.
          std.sort.insertion(usize, self.order, self.riders, aheadOf);
@@ -132,7 +132,7 @@ diff --git src/main.zig src/main.zig
          const first = self.leader();
          if (first != self.last_leader and n < events.len) {
              events[n] = .{ .new_leader = self.riders[first].name };
-@@ -684,6 +772,20 @@ const Race = struct {
+@@ -684,6 +774,20 @@ const Race = struct {
          for (self.order, 0..) |*place, i| place.* = i;
      }
  
@@ -151,14 +151,14 @@ diff --git src/main.zig src/main.zig
      /// Which rider is furthest along.
      fn leader(self: *const Race) usize {
          return leaderOf(self.riders);
-@@ -1315,7 +1417,6 @@ test "the results list every rider once, leader first" {
+@@ -1315,7 +1419,6 @@ test "the results list every rider once, leader first" {
      try std.testing.expectEqual(@as(usize, 1 + 8), std.mem.count(u8, w.buffered(), "\n"));
  }
  
  /// The old way, one segment at a time: what binary search must agree with.
  fn terrainAtLinear(course: Course, position_m: f64) Terrain {
      var gradient_pct: f64 = 0;
-@@ -1355,4 +1456,39 @@ test "the segment index: none before the start, the last past the end" {
+@@ -1355,4 +1458,39 @@ test "the segment index: none before the start, the last past the end" {
      try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(100));
      try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(500));
  }

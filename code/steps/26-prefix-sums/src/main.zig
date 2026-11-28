@@ -408,6 +408,7 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
     for (race.order, 1..) |index, place| {
         const rider = race.riders[index];
         try w.print("{d:>4}  {c}  {s:<10}", .{ place, rider.name, rider.full_name });
+        // #region cell
         // The time or the gap, written into a cell first so the next column lines up whatever its width.
         var cell_buf: [16]u8 = undefined;
         var cell: std.Io.Writer = .fixed(&cell_buf);
@@ -417,6 +418,7 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
             try cell.print("+{d:.0} m", .{race.course.distance_m - rider.position_m});
         }
         try w.print("{s:<8}", .{cell.buffered()});
+        // #endregion cell
         // #region fastest-km
         if (race.splits.len > 0) {
             if (race.splits[index].best_s) |best_s| {

@@ -15,7 +15,14 @@ diff --git src/main.zig src/main.zig
      /// The terrain at `position_m`: that of the segment it's on (flat before the first).
      fn terrainAt(self: Course, position_m: f64) Terrain {
          const i = self.segmentAt(position_m) orelse return .flat;
-@@ -417,19 +426,16 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
+@@ -408,7 +417,6 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
+     for (race.order, 1..) |index, place| {
+         const rider = race.riders[index];
+         try w.print("{d:>4}  {c}  {s:<10}", .{ place, rider.name, rider.full_name });
+         // The time or the gap, written into a cell first so the next column lines up whatever its width.
+         var cell_buf: [16]u8 = undefined;
+         var cell: std.Io.Writer = .fixed(&cell_buf);
+@@ -418,20 +426,16 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
              try cell.print("+{d:.0} m", .{race.course.distance_m - rider.position_m});
          }
          try w.print("{s:<8}", .{cell.buffered()});
@@ -32,7 +39,7 @@ diff --git src/main.zig src/main.zig
  /// How much a course climbs, as prefix sums: the metres climbed from the start to where each segment
  /// starts. The climbing between any two points is then a subtraction, however long the course.
  const ClimbProfile = struct {
-@@ -464,9 +470,7 @@ const ClimbProfile = struct {
+@@ -466,9 +470,7 @@ const ClimbProfile = struct {
          return self.to(to_m) - self.to(from_m);
      }
  };
@@ -40,14 +47,14 @@ diff --git src/main.zig src/main.zig
  /// Where a rider was at one second.
  const Sample = struct { clock_s: u32, position_m: f64 };
  
-@@ -492,7 +496,6 @@ const Split = struct {
+@@ -494,7 +496,6 @@ const Split = struct {
          }
      }
  };
  
  /// The kinds of mark on a course, in the order they're announced when two share a metre.
  const MarkKind = enum { km, climb_start, climb_top, to_go };
-@@ -553,11 +556,15 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+@@ -555,11 +556,15 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
      var race = try Race.fromField(course, field);
      race.marks = try planMarks(race_gpa, course); // in the race's arena, gone with it
      try race.trackOrder(race_gpa);
@@ -62,7 +69,7 @@ diff --git src/main.zig src/main.zig
      var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
      var events: [16]Event = undefined;
      // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
-@@ -606,6 +613,12 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+@@ -608,6 +613,12 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
          try out.print("  {s}\n", .{line.text()});
      }
      try printResults(out, &race);
@@ -73,7 +80,7 @@ diff --git src/main.zig src/main.zig
  
      // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
      if (race.winner) |w| {
-@@ -700,9 +713,10 @@ const Race = struct {
+@@ -702,9 +713,10 @@ const Race = struct {
      clock_s: u32 = 0,
      marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
      order: []usize = &.{}, // rider indexes, leader first (once `trackOrder` has made room for them)
@@ -82,7 +89,7 @@ diff --git src/main.zig src/main.zig
      last_leader: usize = 0, // who led after the last step
      winner: ?u8 = null, // nobody yet: an optional is a value or null
  
-@@ -737,12 +751,13 @@ const Race = struct {
+@@ -739,12 +751,13 @@ const Race = struct {
          // Riders rarely swap places in one second, so the order is nearly sorted already: insertion sort
          // only has to move the few who changed places.
          std.sort.insertion(usize, self.order, self.riders, aheadOf);
@@ -94,14 +101,14 @@ diff --git src/main.zig src/main.zig
          if (first != self.last_leader and n < events.len) {
              events[n] = .{ .new_leader = self.riders[first].name };
              n += 1;
-@@ -772,7 +787,6 @@ const Race = struct {
+@@ -774,7 +787,6 @@ const Race = struct {
          for (self.order, 0..) |*place, i| place.* = i;
      }
  
      /// Starts timing everyone's fastest km: a window of up to 256 seconds per rider (a rider slower than
      /// 1000 m in 256 s, under 4 m/s, gets no fastest km).
      fn trackSplits(self: *Race, gpa: std.mem.Allocator) !void {
-@@ -784,7 +798,13 @@ const Race = struct {
+@@ -786,7 +798,13 @@ const Race = struct {
              split.add(self.clock_s, rider.position_m); // where it starts
          }
      }
@@ -113,14 +120,14 @@ diff --git src/main.zig src/main.zig
  
      /// Which rider is furthest along.
      fn leader(self: *const Race) usize {
-@@ -1457,7 +1477,6 @@ test "the segment index: none before the start, the last past the end" {
+@@ -1459,7 +1477,6 @@ test "the segment index: none before the start, the last past the end" {
      try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(500));
  }
  
  test "metres climbed between two points, from the prefix sums" {
      const gpa = std.testing.allocator;
      const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
-@@ -1491,4 +1510,34 @@ test "no fastest kilometre until a kilometre has been ridden" {
+@@ -1493,4 +1510,34 @@ test "no fastest kilometre until a kilometre has been ridden" {
      for (1..90) |second| split.add(@intCast(second), @as(f64, @floatFromInt(second)) * 10);
      try std.testing.expectEqual(@as(?u32, null), split.best_s);
  }
