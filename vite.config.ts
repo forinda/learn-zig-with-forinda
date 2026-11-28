@@ -38,6 +38,8 @@ export default defineConfig({
         lineNumbers: true,
         // A copy button on every code block: readers copy the code into their own project.
         copy: { tag: 'copy', from: '@clarusjs/theme-docs/copy.tscl' },
+        // ::: code-group blocks: several files (or versions) as tabs, so long pages stay short.
+        codeGroups: { tag: 'codeTabs', from: '@clarusjs/theme-docs/code-tabs.tscl' },
         // ::: quiz blocks in lessons render through the theme's quiz (its options are an island).
         quiz: { tag: 'quiz', from: '@clarusjs/theme-docs/quiz.tscl' },
         // Every page's frontmatter is checked (src/schemas.ts); lessons need their step, minutes and competency.

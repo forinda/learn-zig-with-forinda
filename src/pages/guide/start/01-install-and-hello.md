@@ -187,18 +187,14 @@ use a smaller `build.zig` than `zig init`'s: the [next page](/guide/start/02-bui
 
 ## In the game
 
-The game's first step is a project whose `main` prints its name through a stdout writer. Here's all of it:
-`src/main.zig`,
+The game's first step is a project whose `main` prints its name through a stdout writer. Here's all of it, three
+files (one tab each):
 
-<<< @/code/steps/01-hello/src/main.zig
-
-this `build.zig`,
-
-<<< @/code/steps/01-hello/build.zig
-
-and this `build.zig.zon`:
-
-<<< @/code/steps/01-hello/build.zig.zon
+::: code-group
+<<< @/code/steps/01-hello/src/main.zig [src/main.zig]
+<<< @/code/steps/01-hello/build.zig [build.zig]
+<<< @/code/steps/01-hello/build.zig.zon [build.zig.zon]
+:::
 
 Copy the folder `code/steps/01-hello` from the course repository, or make the three files yourself, then inside
 the folder:
