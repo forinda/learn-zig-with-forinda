@@ -108,7 +108,7 @@ diff --git src/main.zig src/main.zig
  
      // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
      if (race.winner) |w| {
-@@ -519,7 +574,7 @@ fn number(word: ?[]const u8) ParseError!f64 {
+@@ -519,7 +574,9 @@ fn number(word: ?[]const u8) ParseError!f64 {
  /// Something that happened in the race. One value, one of several kinds, each with its own data:
  /// a tagged union. A `switch` on it says what to do with each kind.
  const Event = union(enum) {
@@ -117,7 +117,7 @@ diff --git src/main.zig src/main.zig
      new_leader: u8, // this rider took the lead
      finished: u8, // this rider crossed the line
  };
-@@ -529,7 +584,7 @@ const Race = struct {
+@@ -529,7 +586,9 @@ const Race = struct {
      course: Course,
      riders: []Rider, // the field: not the race's own memory, a view of the caller's
      clock_s: u32 = 0,
@@ -126,7 +126,7 @@ diff --git src/main.zig src/main.zig
      last_leader: usize = 0, // who led after the last step
      winner: ?u8 = null, // nobody yet: an optional is a value or null
  
-@@ -567,10 +622,11 @@ const Race = struct {
+@@ -567,11 +626,14 @@ const Race = struct {
              n += 1;
              self.last_leader = first;
          }
@@ -141,7 +141,8 @@ diff --git src/main.zig src/main.zig
          }
          for (self.riders) |rider| {
              if (rider.last_m < self.course.distance_m and rider.finished(self.course.distance_m)) {
-@@ -835,9 +891,12 @@ fn hasEvent(events: []const Event, want: Event) bool {
+                 if (self.winner == null) self.winner = rider.name; // the first across the line
+@@ -835,9 +897,12 @@ fn hasEvent(events: []const Event, want: Event) bool {
  
  test "a step that passes a km marker reports it" {
      var field: [8]Rider = undefined;
@@ -156,14 +157,14 @@ diff --git src/main.zig src/main.zig
  }
  
  test "a new leader is reported once" {
-@@ -1086,7 +1145,6 @@ test "a whole race leaks nothing, and its winner is in the standings" {
+@@ -1086,7 +1151,6 @@ test "a whole race leaks nothing, and its winner is in the standings" {
      try std.testing.expectEqual(@as(?u32, 1), standings.get("Buffer"));
  }
  
  test "a feed under its size keeps every line, in order" {
      var buf: [3]FeedLine = undefined;
      var feed: Feed = .init(&buf);
-@@ -1117,4 +1175,55 @@ test "a line too long for the feed is cut, not overflowed" {
+@@ -1117,4 +1181,55 @@ test "a line too long for the feed is cut, not overflowed" {
      var lines = feed.lines.iterator();
      try std.testing.expectEqual(@as(usize, FeedLine.max_len), lines.next().?.text().len);
  }

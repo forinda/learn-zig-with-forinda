@@ -574,7 +574,9 @@ fn number(word: ?[]const u8) ParseError!f64 {
 /// Something that happened in the race. One value, one of several kinds, each with its own data:
 /// a tagged union. A `switch` on it says what to do with each kind.
 const Event = union(enum) {
+    // #region event
     mark: Mark, // the leader passed a mark on the course
+    // #endregion event
     new_leader: u8, // this rider took the lead
     finished: u8, // this rider crossed the line
 };
@@ -584,7 +586,9 @@ const Race = struct {
     course: Course,
     riders: []Rider, // the field: not the race's own memory, a view of the caller's
     clock_s: u32 = 0,
+    // #region marks-field
     marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
+    // #endregion marks-field
     last_leader: usize = 0, // who led after the last step
     winner: ?u8 = null, // nobody yet: an optional is a value or null
 
@@ -622,12 +626,14 @@ const Race = struct {
             n += 1;
             self.last_leader = first;
         }
+        // #region marks-step
         // Every mark the leader has reached, nearest first: the queue always hands out the smallest.
         while (self.marks.peek()) |mark| {
             if (mark.at_m > self.riders[first].position_m or n == events.len) break;
             events[n] = .{ .mark = self.marks.pop().? };
             n += 1;
         }
+        // #endregion marks-step
         for (self.riders) |rider| {
             if (rider.last_m < self.course.distance_m and rider.finished(self.course.distance_m)) {
                 if (self.winner == null) self.winner = rider.name; // the first across the line

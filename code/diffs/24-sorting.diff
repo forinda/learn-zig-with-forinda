@@ -77,7 +77,16 @@ diff --git src/main.zig src/main.zig
  
      // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
      if (race.winner) |w| {
-@@ -585,6 +614,9 @@ const Race = struct {
+@@ -574,9 +603,7 @@ fn number(word: ?[]const u8) ParseError!f64 {
+ /// Something that happened in the race. One value, one of several kinds, each with its own data:
+ /// a tagged union. A `switch` on it says what to do with each kind.
+ const Event = union(enum) {
+     mark: Mark, // the leader passed a mark on the course
+     new_leader: u8, // this rider took the lead
+     finished: u8, // this rider crossed the line
+ };
+@@ -586,9 +613,10 @@ const Race = struct {
+     course: Course,
      riders: []Rider, // the field: not the race's own memory, a view of the caller's
      clock_s: u32 = 0,
      marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
@@ -85,7 +94,7 @@ diff --git src/main.zig src/main.zig
      last_leader: usize = 0, // who led after the last step
      winner: ?u8 = null, // nobody yet: an optional is a value or null
  
-@@ -616,6 +648,11 @@ const Race = struct {
+@@ -620,20 +648,23 @@ const Race = struct {
              rider.position_m = advance_m(rider.position_m, speed_mps, dt_s);
          }
          self.clock_s += 1;
@@ -95,7 +104,19 @@ diff --git src/main.zig src/main.zig
          const first = self.leader();
          if (first != self.last_leader and n < events.len) {
              events[n] = .{ .new_leader = self.riders[first].name };
-@@ -640,6 +677,14 @@ const Race = struct {
+             n += 1;
+             self.last_leader = first;
+         }
+         // Every mark the leader has reached, nearest first: the queue always hands out the smallest.
+         while (self.marks.peek()) |mark| {
+             if (mark.at_m > self.riders[first].position_m or n == events.len) break;
+             events[n] = .{ .mark = self.marks.pop().? };
+             n += 1;
+         }
+         for (self.riders) |rider| {
+             if (rider.last_m < self.course.distance_m and rider.finished(self.course.distance_m)) {
+                 if (self.winner == null) self.winner = rider.name; // the first across the line
+@@ -646,6 +677,14 @@ const Race = struct {
          return events[0..n];
      }
  
@@ -108,14 +129,14 @@ diff --git src/main.zig src/main.zig
      /// Which rider is furthest along.
      fn leader(self: *const Race) usize {
          return leaderOf(self.riders);
-@@ -1176,7 +1221,6 @@ test "a line too long for the feed is cut, not overflowed" {
+@@ -1182,7 +1221,6 @@ test "a line too long for the feed is cut, not overflowed" {
      try std.testing.expectEqual(@as(usize, FeedLine.max_len), lines.next().?.text().len);
  }
  
  test "marks come out in distance order, whatever order they went in" {
      const gpa = std.testing.allocator;
      var marks: MarkQueue = .empty;
-@@ -1226,4 +1270,50 @@ test "a mark's label says what it is" {
+@@ -1232,4 +1270,50 @@ test "a mark's label says what it is" {
      try std.testing.expectEqualStrings("km 7", (Mark{ .at_m = 7000, .kind = .km }).label(&buf));
      try std.testing.expectEqualStrings("1 km to go", (Mark{ .at_m = 11500, .kind = .to_go }).label(&buf));
  }
