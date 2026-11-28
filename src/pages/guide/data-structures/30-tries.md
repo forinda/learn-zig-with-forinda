@@ -44,7 +44,7 @@ const Node = struct {
 ```
 
 One allocation that grows, one `deinit`, and no pointers to go stale: appending a node can move the whole list
-([Lists that grow](/guide/data-structures/19-lists-that-grow)), but an index still means the same node afterwards.
+([Lists that grow](/guide/memory/19-lists-that-grow)), but an index still means the same node afterwards.
 
 ### Finding a child, inserting a word
 

@@ -70,13 +70,14 @@ A heap promises the smallest first, and nothing about equals. Three jobs at 4000
 ```
 
 If the order of equals matters (and when you print it, it does), make the rule decide it: compare a second key
-when the first is equal.
+when the first is equal. `@backingInt` gives an enum value's number (older Zig called it `@intFromEnum`, and
+`zig fmt` rewrites the old name to the new one).
 
 ```zig
 fn nearer(_: void, a: Mark, b: Mark) std.math.Order {
     const by_distance = std.math.order(a.at_m, b.at_m);
     if (by_distance != .eq) return by_distance;
-    return std.math.order(@intFromEnum(a.kind), @intFromEnum(b.kind));
+    return std.math.order(@backingInt(a.kind), @backingInt(b.kind));
 }
 ```
 
