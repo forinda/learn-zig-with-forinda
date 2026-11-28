@@ -93,16 +93,3 @@ avoids the pass (the climb is slow), and from finish to start it's the same road
 ```sh
 zig build test --summary all
 ```
-
-## Stretch
-
-**Part 5's challenge: your own map.** Draw a course map of at least eight places with a circuit (a loop you could
-ride round more than once). Let the player pick a start and a finish by name (completion from a trie, or edit
-distance for typos), plan the route, and race it.
-
-- A test that plans a route on your map and checks it, by both searches if they differ.
-- A test that an unreachable finish is reported to the player (a note on stderr), not a crash.
-- A test that a route round your circuit, start and finish at the same place, is just that place (or, if you want
-  laps, your own rule, tested).
-
-Any map with a circuit that plans, races, and passes the three tests counts.

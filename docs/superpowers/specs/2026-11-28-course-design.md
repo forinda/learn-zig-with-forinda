@@ -215,4 +215,5 @@ comparing (generated, region markers stripped). Model: src/pages/guide/basics/06
 Part 5 is "Data structures and algorithms": the planned structures plus prefix sums and sliding windows, searching
 text (with word wrap), edit distance (dynamic programming) and tries, ten steps (22–31). Merge sort by hand goes in
 the sorting page. UTF-8 and a hand-written lexer go to Part 9 (File I/O), bunching riders to Part 8, shuffling to
-Part 7, topological sort to Part 10.
+Part 7. Topological sort was first sent to Part 10, then added to Part 5 as step 32 (Felix): a season of
+courses that unlock after others; Part 10 can point back to it for the build graph.

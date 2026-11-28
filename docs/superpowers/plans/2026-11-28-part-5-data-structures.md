@@ -103,3 +103,11 @@ Competencies (course.ts gains the fourth): 22, 23, 27, 30 "I can pick the right 
 ### Task 5: Check and PR
 
 - [ ] All checks; screenshots (guide 31 In the game, lesson 31 Stretch); self-review against the Review Focus (no review agent unless Felix asks); PR with rulings and deferred items.
+
+## Added (Felix, after Task 1): topological sort
+
+Step 32, `32-topological-sort`: a season. Courses unlock after others (`unlocks_text`: "Linker Loop after Compile
+Pass", ...); `parseUnlocks` reads the rules and `seasonOrder` orders them with Kahn's algorithm, ready courses taken
+from a priority queue by list index (deterministic), `null` for a circle. The races follow the season from the course
+picked. Guide page 32 also teaches the depth-first version with three marks. Part 5's Stretch moves from lesson 31 to
+lesson 32 (now "your own map and season"). Competency: "I can find a route through a graph".
