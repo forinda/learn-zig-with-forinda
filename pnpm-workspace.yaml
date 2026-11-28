@@ -1,0 +1,5 @@
+minimumReleaseAgeExclude:
+  - '@clarusjs/content@0.8.0'
+  - '@clarusjs/prettier-plugin@0.3.0'
+  - '@clarusjs/theme-docs@0.6.0'
+  - clarusjs@0.19.0

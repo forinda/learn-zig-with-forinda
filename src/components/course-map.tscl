@@ -40,7 +40,7 @@
   }
 </ol>
 
-<style>
+<style scoped>
   .course-map {
     list-style: none;
     padding: 0;

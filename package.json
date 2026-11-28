@@ -19,14 +19,14 @@
     "format:check": "prettier --check \"src/**/*.tscl\""
   },
   "dependencies": {
-    "@clarusjs/theme-docs": "0.5.0",
+    "@clarusjs/theme-docs": "0.6.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
-    "clarusjs": "0.16.0"
+    "clarusjs": "0.19.0"
   },
   "devDependencies": {
-    "@clarusjs/content": "0.5.0",
-    "@clarusjs/prettier-plugin": "0.2.1",
+    "@clarusjs/content": "0.8.0",
+    "@clarusjs/prettier-plugin": "0.3.0",
     "@types/node": "^26.6.6",
     "prettier": "3.10.1",
     "typescript": "^7.0.2",
