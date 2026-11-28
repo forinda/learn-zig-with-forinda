@@ -1,0 +1,237 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -231,14 +231,12 @@ const Course = struct {
+     distance_m: f64,
+     segments: []const Segment = &.{}, // no segments: flat all the way
+ 
+     /// Which kinds of terrain this course has: a set with one bit per kind of `Terrain`.
+     fn terrainKinds(self: Course) std.EnumSet(Terrain) {
+         var kinds: std.EnumSet(Terrain) = .empty;
+         for (self.segments) |segment| kinds.insert(Terrain.of(segment.gradient_pct));
+         return kinds;
+     }
+ 
+     /// The terrain at `position_m`: that of the segment it's on (flat before the first).
+     fn terrainAt(self: Course, position_m: f64) Terrain {
+@@ -497,6 +495,67 @@ const Split = struct {
+     }
+ };
+ 
++/// Boyer-Moore-Horspool search: compare the needle at a place; on a mismatch, look at the haystack's byte
++/// under the needle's last position and jump as far as that byte allows. A byte that isn't in the needle
++/// lets it jump the needle's whole length.
++const Horspool = struct {
++    needle: []const u8,
++    skip: [256]usize,
++
++    fn init(needle: []const u8) Horspool {
++        var h: Horspool = .{ .needle = needle, .skip = @splat(needle.len) };
++        if (needle.len > 0) {
++            for (needle[0 .. needle.len - 1], 0..) |byte, i| h.skip[byte] = needle.len - 1 - i;
++        }
++        return h;
++    }
++
++    /// Where the needle next appears at or after `start`, or `null`.
++    fn find(self: *const Horspool, haystack: []const u8, start: usize) ?usize {
++        const n = self.needle.len;
++        if (n == 0) return null;
++        var i = start;
++        while (i + n <= haystack.len) {
++            if (std.mem.eql(u8, haystack[i..][0..n], self.needle)) return i;
++            i += self.skip[haystack[i + n - 1]];
++        }
++        return null;
++    }
++
++    /// How many times the needle appears, without overlaps.
++    fn count(self: *const Horspool, haystack: []const u8) usize {
++        var found: usize = 0;
++        var i: usize = 0;
++        while (self.find(haystack, i)) |at| {
++            found += 1;
++            i = at + self.needle.len;
++        }
++        return found;
++    }
++};
++
++/// Writes `text` in lines of at most `width` columns, breaking between words (greedy: as many words as
++/// fit on each line). A word longer than the width gets a line of its own.
++fn wrap(w: *std.Io.Writer, text: []const u8, width: usize) !void {
++    var column: usize = 0;
++    var words = std.mem.tokenizeScalar(u8, text, ' ');
++    while (words.next()) |word| {
++        if (column > 0 and column + 1 + word.len > width) {
++            try w.writeByte('\n');
++            column = 0;
++        }
++        if (column > 0) {
++            try w.writeByte(' ');
++            column += 1;
++        }
++        try w.writeAll(word);
++        column += word.len;
++    }
++    if (column > 0) try w.writeByte('\n');
++}
++
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+ 
+@@ -557,25 +616,28 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     race.marks = try planMarks(race_gpa, course); // in the race's arena, gone with it
+     try race.trackOrder(race_gpa);
+     try race.trackSplits(race_gpa);
+     try race.trackLeaders(race_gpa);
+     const profile = try ClimbProfile.init(race_gpa, course);
+     try out.print("{d:.1} km, {d:.0} m of climbing; terrain:", .{ course.distance_m / 1000, profile.between(0, course.distance_m) });
+     var kinds = course.terrainKinds().iterator();
+     while (kinds.next()) |kind| try out.print(" {s}", .{@tagName(kind)});
+     try out.print("\n", .{});
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
+     var feed_lines: [feed_size]FeedLine = undefined;
+     var feed: Feed = .init(&feed_lines);
++    // ...and the whole commentary, as one growing text (in the race's arena).
++    var log: std.Io.Writer.Allocating = .init(race_gpa);
+     while (!race.done()) {
+         for (race.step(&events)) |event| switch (event) {
+             .mark => |mark| {
+                 var label_buf: [24]u8 = undefined;
+                 const label = mark.label(&label_buf);
+                 feed.push(race.clock_s, "{s}: {s} leads", .{ label, race.riders[race.leader()].full_name });
++                try log.writer.print("{s}: {s} leads.\n", .{ label, race.riders[race.leader()].full_name });
+                 if (mark.kind != .km) { // the climb and the finale get a line of their own, no road
+                     try out.print("  {s} at ", .{label});
+                     try printTime(out, race.clock_s);
+@@ -594,9 +656,11 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+             .new_leader => |name| {
+                 try out.print("  {c} takes the lead\n", .{name});
+                 feed.push(race.clock_s, "{s} takes the lead", .{race.riderNamed(name).?.full_name});
++                try log.writer.print("{s} takes the lead.\n", .{race.riderNamed(name).?.full_name});
+             },
+             .finished => |name| {
+                 feed.push(race.clock_s, "{s} crosses the line", .{race.riderNamed(name).?.full_name});
++                try log.writer.print("{s} crosses the line.\n", .{race.riderNamed(name).?.full_name});
+                 try out.print("{c} crosses the line in ", .{name});
+                 try printTime(out, race.clock_s);
+                 try out.print("\n", .{});
+@@ -613,12 +677,29 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+         try out.print("  {s}\n", .{line.text()});
+     }
+     try printResults(out, &race);
+     try out.print("led the race:", .{});
+     var leaders = race.led.iterator(.{}); // the set bits, lowest first: letter order
+     while (leaders.next()) |i| try out.print(" {s}", .{race.riders[i].full_name});
+     try out.print("\n", .{});
++    // A summary sentence, then how often you were mentioned: counted with Horspool's search over the
++    // whole commentary. The sentence is wrapped to 40 columns, a word at a time.
++    if (race.order.len >= 3) {
++        var summary: std.Io.Writer.Allocating = .init(race_gpa);
++        const first = race.riders[race.order[0]];
++        try summary.writer.print("{s} wins {s} in ", .{ first.full_name, course.name });
++        try printTime(&summary.writer, race.clock_s);
++        try summary.writer.print(", {d:.0} m ahead of {s}, with {s} third. ", .{
++            race.course.distance_m - race.riders[race.order[1]].position_m, // the gap as the winner crossed the line
++            race.riders[race.order[1]].full_name,
++            race.riders[race.order[2]].full_name,
++        });
++        const you = race.riders[you_index].full_name;
++        const mentions = Horspool.init(you).count(log.written());
++        try summary.writer.print("{s}, your rider, was mentioned {d} times in the commentary.", .{ you, mentions });
++        try wrap(out, summary.written(), 40);
++    }
+ 
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     if (race.winner) |w| {
+@@ -714,9 +795,7 @@ const Race = struct {
+     marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
+     order: []usize = &.{}, // rider indexes, leader first (once `trackOrder` has made room for them)
+     splits: []Split = &.{}, // each rider's fastest km so far (once `trackSplits` has made room)
+     led: std.DynamicBitSetUnmanaged = .{}, // one bit per rider: has it led? (once `trackLeaders` has made room)
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
+@@ -755,9 +834,7 @@ const Race = struct {
+             for (self.splits, self.riders) |*split, rider| split.add(self.clock_s, rider.position_m);
+         }
+         const first = self.leader();
+         if (self.led.bit_length > 0) self.led.set(first); // setting a bit that's already set changes nothing
+         if (first != self.last_leader and n < events.len) {
+             events[n] = .{ .new_leader = self.riders[first].name };
+             n += 1;
+@@ -799,12 +876,10 @@ const Race = struct {
+         }
+     }
+ 
+     /// Starts remembering who has led: one bit per rider, all clear.
+     fn trackLeaders(self: *Race, gpa: std.mem.Allocator) !void {
+         self.led = try .initEmpty(gpa, self.riders.len);
+     }
+ 
+     /// Which rider is furthest along.
+     fn leader(self: *const Race) usize {
+@@ -1511,7 +1586,6 @@ test "no fastest kilometre until a kilometre has been ridden" {
+     try std.testing.expectEqual(@as(?u32, null), split.best_s);
+ }
+ 
+ test "everyone who led at some point is in the set, once" {
+     const gpa = std.testing.allocator;
+     const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
+@@ -1540,4 +1614,55 @@ test "a course's terrain kinds, as a set" {
+     try std.testing.expectEqual(@as(usize, 2), kinds.count());
+     try std.testing.expect(!kinds.contains(.descent));
+ }
++
++/// The simplest search: try the needle at every place. What the others must agree with.
++fn countNaive(haystack: []const u8, needle: []const u8) usize {
++    if (needle.len == 0 or needle.len > haystack.len) return 0;
++    var found: usize = 0;
++    var i: usize = 0;
++    while (i + needle.len <= haystack.len) {
++        if (std.mem.eql(u8, haystack[i..][0..needle.len], needle)) {
++            found += 1;
++            i += needle.len; // matches don't overlap
++        } else i += 1;
++    }
++    return found;
++}
++
++test "Horspool, std.mem.count and the naive search agree" {
++    const text = "Heap takes the lead. Heap leads. Buffer takes the lead. HeapHeap. Hea";
++    for ([_][]const u8{ "Heap", "the lead", "H", "Hea", "Errdefer", "lead. Heap", "aa" }) |needle| {
++        const horspool: Horspool = .init(needle);
++        try std.testing.expectEqual(countNaive(text, needle), horspool.count(text));
++        try std.testing.expectEqual(std.mem.count(u8, text, needle), horspool.count(text));
++    }
++}
++
++test "a needle longer than the text is never found" {
++    const horspool: Horspool = .init("Errdefer crosses the line");
++    try std.testing.expectEqual(@as(usize, 0), horspool.count("Heap"));
++}
++
++test "wrapping never makes a line longer than the width, and keeps every word" {
++    const text = "Heap wins Compile Pass in 21:43, 88 m ahead of Buffer, with Alloc third.";
++    var buf: [256]u8 = undefined;
++    var w: std.Io.Writer = .fixed(&buf);
++    try wrap(&w, text, 20);
++    var lines = std.mem.splitScalar(u8, std.mem.trimEnd(u8, w.buffered(), "\n"), '\n');
++    var words: usize = 0;
++    while (lines.next()) |line| {
++        try std.testing.expect(line.len <= 20);
++        var it = std.mem.tokenizeScalar(u8, line, ' ');
++        while (it.next()) |_| words += 1;
++    }
++    try std.testing.expectEqual(@as(usize, 14), words);
++}
++
++test "a word longer than the width gets a line of its own" {
++    var buf: [64]u8 = undefined;
++    var w: std.Io.Writer = .fixed(&buf);
++    try wrap(&w, "a commentatorially long word", 8);
++    try std.testing.expectEqualStrings("a\ncommentatorially\nlong\nword\n", w.buffered());
++}

@@ -1,0 +1,142 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -90,9 +90,29 @@ pub fn main(init: std.process.Init) !void {
+     var standings: Standings = .empty;
+     defer freeStandings(gpa, &standings);
+ 
++    // Which course first? A typo still finds the course it's closest to (by edit distance), with a note.
++    const course_answer = askLine(in, out, "Which course first? (Compile Pass, Linker Loop) ") catch |e| switch (e) {
++        error.StreamTooLong => null,
++        else => return e,
++    };
++    var first_course: usize = 0;
++    if (course_answer) |typed| if (typed.len > 0) {
++        if (try closestCourse(gpa, typed)) |pick| {
++            first_course = pick.index;
++            if (pick.distance > 0) {
++                try err.print("note: no course \"{s}\"; did you mean \"{s}\"? racing it\n", .{ typed, courses[pick.index].name });
++            }
++        } else {
++            try err.print("note: no course like \"{s}\"; racing {s}\n", .{ typed, courses[0].name });
++        }
++        try err.flush();
++    };
++
+     var race_no: usize = 0;
+     while (true) : (race_no += 1) {
+-        const plan = courses[race_no % courses.len];
++        const plan = courses[(first_course + race_no) % courses.len];
+         try out.print("\nrace {d}: {s}\n", .{ race_no + 1, plan.name });
+         try playRace(gpa, out, &standings, plan, you_index);
+         try printStandings(gpa, out, &standings);
+@@ -495,7 +515,6 @@ const Split = struct {
+     }
+ };
+ 
+ /// Boyer-Moore-Horspool search: compare the needle at a place; on a mismatch, look at the haystack's byte
+ /// under the needle's last position and jump as far as that byte allows. A byte that isn't in the needle
+ /// lets it jump the needle's whole length.
+@@ -554,7 +573,47 @@ fn wrap(w: *std.Io.Writer, text: []const u8, width: usize) !void {
+     }
+     if (column > 0) try w.writeByte('\n');
+ }
++
++/// How many single-letter edits (insert, delete, change) turn `a` into `b`, ignoring case: the
++/// Levenshtein distance. Dynamic programming: the distance between the first i letters of `a` and the
++/// first j of `b` comes from three smaller ones, so the table is filled a row at a time, and only the
++/// previous row is needed to fill the next.
++fn editDistance(gpa: std.mem.Allocator, a: []const u8, b: []const u8) !usize {
++    const rows = try gpa.alloc(usize, 2 * (b.len + 1));
++    defer gpa.free(rows);
++    var previous = rows[0 .. b.len + 1];
++    var current = rows[b.len + 1 ..];
++    for (previous, 0..) |*d, j| d.* = j; // "" to the first j letters of b: j inserts
++    for (a, 1..) |letter_a, i| {
++        current[0] = i; // the first i letters of a to "": i deletes
++        for (b, 1..) |letter_b, j| {
++            const change: usize = if (std.ascii.toLower(letter_a) == std.ascii.toLower(letter_b)) 0 else 1;
++            current[j] = @min(
++                previous[j] + 1, // delete a's letter
++                current[j - 1] + 1, // insert b's letter
++                previous[j - 1] + change, // keep it, or change it
++            );
++        }
++        std.mem.swap([]usize, &previous, &current);
++    }
++    return previous[b.len];
++}
++
++/// A course found by name: which one, and how many edits away the name was (0: exactly).
++const CoursePick = struct { index: usize, distance: usize };
++
++/// The course whose name is closest to `typed`, if one is within 3 edits.
++fn closestCourse(gpa: std.mem.Allocator, typed: []const u8) !?CoursePick {
++    if (typed.len == 0) return null;
++    var best: ?CoursePick = null;
++    for (courses, 0..) |course, i| {
++        const distance = try editDistance(gpa, typed, course.name);
++        if (distance <= 3 and (best == null or distance < best.?.distance)) best = .{ .index = i, .distance = distance };
++    }
++    return best;
++}
+ 
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+@@ -627,10 +686,8 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
+     var feed_lines: [feed_size]FeedLine = undefined;
+     var feed: Feed = .init(&feed_lines);
+     // ...and the whole commentary, as one growing text (in the race's arena).
+     var log: std.Io.Writer.Allocating = .init(race_gpa);
+     while (!race.done()) {
+         for (race.step(&events)) |event| switch (event) {
+             .mark => |mark| {
+@@ -681,7 +738,6 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     var leaders = race.led.iterator(.{}); // the set bits, lowest first: letter order
+     while (leaders.next()) |i| try out.print(" {s}", .{race.riders[i].full_name});
+     try out.print("\n", .{});
+     // A summary sentence, then how often you were mentioned: counted with Horspool's search over the
+     // whole commentary. The sentence is wrapped to 40 columns, a word at a time.
+     if (race.order.len >= 3) {
+@@ -699,7 +755,6 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+         try summary.writer.print("{s}, your rider, was mentioned {d} times in the commentary.", .{ you, mentions });
+         try wrap(out, summary.written(), 40);
+     }
+ 
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     if (race.winner) |w| {
+@@ -1615,7 +1670,6 @@ test "a course's terrain kinds, as a set" {
+     try std.testing.expect(!kinds.contains(.descent));
+ }
+ 
+ /// The simplest search: try the needle at every place. What the others must agree with.
+ fn countNaive(haystack: []const u8, needle: []const u8) usize {
+     if (needle.len == 0 or needle.len > haystack.len) return 0;
+@@ -1665,4 +1719,28 @@ test "a word longer than the width gets a line of its own" {
+     try wrap(&w, "a commentatorially long word", 8);
+     try std.testing.expectEqualStrings("a\ncommentatorially\nlong\nword\n", w.buffered());
+ }
++
++test "edit distances" {
++    const gpa = std.testing.allocator;
++    try std.testing.expectEqual(@as(usize, 3), try editDistance(gpa, "kitten", "sitting"));
++    try std.testing.expectEqual(@as(usize, 3), try editDistance(gpa, "", "abc"));
++    try std.testing.expectEqual(@as(usize, 0), try editDistance(gpa, "climb", "climb"));
++    try std.testing.expectEqual(@as(usize, 1), try editDistance(gpa, "clmb", "climb"));
++    try std.testing.expectEqual(@as(usize, 2), try editDistance(gpa, "decsent", "descent"));
++    try std.testing.expectEqual(@as(usize, 0), try editDistance(gpa, "LINKER loop", "Linker Loop")); // case doesn't count
++}
++
++test "a course name with a typo finds the course" {
++    const gpa = std.testing.allocator;
++    try std.testing.expectEqual(@as(?usize, 1), (try closestCourse(gpa, "linker lop")).?.index);
++    try std.testing.expectEqual(@as(?usize, 0), (try closestCourse(gpa, "Compile Pas")).?.index);
++    try std.testing.expectEqual(@as(usize, 0), (try closestCourse(gpa, "compile pass")).?.distance);
++}
++
++test "a course name too far from any course finds none" {
++    const gpa = std.testing.allocator;
++    try std.testing.expect(try closestCourse(gpa, "Gravel Grinder") == null);
++    try std.testing.expect(try closestCourse(gpa, "") == null);
++}

@@ -1,0 +1,158 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -90,7 +90,6 @@ pub fn main(init: std.process.Init) !void {
+     var standings: Standings = .empty;
+     defer freeStandings(gpa, &standings);
+ 
+     var race_no: usize = 0;
+     while (true) : (race_no += 1) {
+         const plan = courses[race_no % courses.len];
+@@ -103,7 +102,6 @@ pub fn main(init: std.process.Init) !void {
+         };
+         if (!wantsMore(again)) break;
+     }
+ 
+     // ...and flush sends what's in the buffer to the screen.
+     try out.flush();
+@@ -344,17 +342,51 @@ const linker_loop_text =
+ ;
+ 
+ /// The courses, raced in turn.
+ /// A course to race: its name and its road as text.
+ const CoursePlan = struct { name: []const u8, text: []const u8 };
+ 
+ const courses = [_]CoursePlan{
+     .{ .name = course_name, .text = compile_pass_text },
+     .{ .name = "Linker Loop", .text = linker_loop_text },
+ };
+ 
++/// One line of the race feed: when it happened and what, as text in a fixed buffer.
++const FeedLine = struct {
++    pub const max_len = 48;
++    clock_s: u32,
++    text_buf: [max_len]u8 = undefined,
++    len: usize = 0,
++
++    fn text(self: *const FeedLine) []const u8 {
++        return self.text_buf[0..self.len];
++    }
++};
++
++/// How many lines the feed keeps.
++const feed_size = 6;
++
++/// The race feed: the last few lines, in a ring buffer. When it's full, a new line pushes out the oldest.
++const Feed = struct {
++    lines: std.Deque(FeedLine),
++
++    /// A feed that keeps as many lines as `buf` has room for (no allocation: the ring is `buf`).
++    fn init(buf: []FeedLine) Feed {
++        return .{ .lines = .initBuffer(buf) };
++    }
++
++    /// Adds a line, written with `fmt` and `args`; text too long for a line is cut.
++    fn push(self: *Feed, clock_s: u32, comptime fmt: []const u8, args: anytype) void {
++        var line: FeedLine = .{ .clock_s = clock_s };
++        var w: std.Io.Writer = .fixed(&line.text_buf);
++        w.print(fmt, args) catch {}; // full: keep what fits
++        line.len = w.buffered().len;
++        if (self.lines.len == self.lines.buffer.len) _ = self.lines.popFront(); // drop the oldest
++        self.lines.pushBackAssumeCapacity(line);
++    }
++};
++
+ /// One race on `plan`'s course, printed to `out`, its winner added to `standings`.
+ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings, plan: CoursePlan, you_index: usize) !void {
+     // Everything this race allocates comes from an arena: no frees one by one, one `deinit` for the lot
+@@ -368,16 +400,26 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     var race = try Race.fromField(course, field);
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
++    // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
++    var feed_lines: [feed_size]FeedLine = undefined;
++    var feed: Feed = .init(&feed_lines);
+     while (!race.done()) {
+         for (race.step(&events)) |event| switch (event) {
+             .km => |km| {
++                feed.push(race.clock_s, "km {d}: {s} leads", .{ km, race.riders[race.leader()].full_name });
+                 try out.print("km {d} at ", .{km});
+                 try printTime(out, race.clock_s);
+                 try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
+                 try out.print("  {s}\n", .{drawRoad(&road, race.riders, race.course.distance_m, you_index)});
+             },
+-            .new_leader => |name| try out.print("  {c} takes the lead\n", .{name}),
++            .new_leader => |name| {
++                try out.print("  {c} takes the lead\n", .{name});
++                feed.push(race.clock_s, "{s} takes the lead", .{race.riderNamed(name).?.full_name});
++            },
+             .finished => |name| {
++                feed.push(race.clock_s, "{s} crosses the line", .{race.riderNamed(name).?.full_name});
+                 try out.print("{c} crosses the line in ", .{name});
+                 try printTime(out, race.clock_s);
+                 try out.print("\n", .{});
+@@ -385,6 +427,17 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+         };
+     }
+ 
++    // The last moments, oldest first: everything older has been pushed out of the ring.
++    try out.print("the finale:\n", .{});
++    var lines = feed.lines.iterator();
++    while (lines.next()) |line| {
++        try out.print("  ", .{});
++        try printTime(out, line.clock_s);
++        try out.print("  {s}\n", .{line.text()});
++    }
++
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     if (race.winner) |w| {
+         try out.print("winner: {c} ({s})\n", .{ w, race.riderNamed(w).?.full_name });
+@@ -405,7 +458,6 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     }
+     if (race.winner) |w| try recordWin(gpa, standings, race.riderNamed(w).?.full_name);
+ }
+ 
+ /// Wins per rider name. The map owns its keys: each is a copy, freed by `freeStandings`.
+ const Standings = std.StringHashMapUnmanaged(u32);
+@@ -1022,7 +1074,6 @@ test "yes means race again" {
+     try std.testing.expect(!wantsMore(null));
+ }
+ 
+ test "a whole race leaks nothing, and its winner is in the standings" {
+     const gpa = std.testing.allocator; // fails the test if anything allocated isn't freed
+     var standings: Standings = .empty;
+@@ -1034,4 +1085,36 @@ test "a whole race leaks nothing, and its winner is in the standings" {
+     try std.testing.expectEqual(@as(?u32, 1), standings.get("Heap"));
+     try std.testing.expectEqual(@as(?u32, 1), standings.get("Buffer"));
+ }
++
++test "a feed under its size keeps every line, in order" {
++    var buf: [3]FeedLine = undefined;
++    var feed: Feed = .init(&buf);
++    feed.push(1, "{s}", .{"one"});
++    feed.push(2, "{s}", .{"two"});
++    var lines = feed.lines.iterator();
++    try std.testing.expectEqualStrings("one", lines.next().?.text());
++    try std.testing.expectEqualStrings("two", lines.next().?.text());
++    try std.testing.expect(lines.next() == null);
++}
++
++test "a full feed drops the oldest line, and keeps the newest, oldest first" {
++    var buf: [3]FeedLine = undefined;
++    var feed: Feed = .init(&buf);
++    for (1..6) |i| feed.push(@intCast(i), "line {d}", .{i}); // five lines into three places
++    try std.testing.expectEqual(@as(usize, 3), feed.lines.len);
++    var lines = feed.lines.iterator();
++    try std.testing.expectEqualStrings("line 3", lines.next().?.text());
++    try std.testing.expectEqualStrings("line 4", lines.next().?.text());
++    try std.testing.expectEqualStrings("line 5", lines.next().?.text());
++}
++
++test "a line too long for the feed is cut, not overflowed" {
++    var buf: [1]FeedLine = undefined;
++    var feed: Feed = .init(&buf);
++    const long: [100]u8 = @splat('x');
++    feed.push(2, "{s}", .{&long});
++    var lines = feed.lines.iterator();
++    try std.testing.expectEqual(@as(usize, FeedLine.max_len), lines.next().?.text().len);
++}
