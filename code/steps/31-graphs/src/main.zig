@@ -101,24 +101,6 @@ pub fn main(init: std.process.Init) !void {
     var standings: Standings = .empty;
     defer freeStandings(gpa, &standings);
 
-    // Which course first? A typo still finds the course it's closest to (by edit distance), with a note.
-    const course_answer = askLine(in, out, "Which course first? (Compile Pass, Linker Loop) ") catch |e| switch (e) {
-        error.StreamTooLong => null,
-        else => return e,
-    };
-    var first_course: usize = 0;
-    if (course_answer) |typed| if (typed.len > 0) {
-        if (try closestCourse(gpa, typed)) |pick| {
-            first_course = pick.index;
-            if (pick.distance > 0) {
-                try err.print("note: no course \"{s}\"; did you mean \"{s}\"? racing it\n", .{ typed, courses[pick.index].name });
-            }
-        } else {
-            try err.print("note: no course like \"{s}\"; racing {s}\n", .{ typed, courses[0].name });
-        }
-        try err.flush();
-    };
-
     // #region plan-route
     // A third course, planned on the map: the shortest route from the start to the finish.
     var map = try CourseMap.init(gpa, &map_roads);
@@ -137,9 +119,31 @@ pub fn main(init: std.process.Init) !void {
     const all_courses = [_]CoursePlan{ courses[0], courses[1], .{ .name = "Route Planner", .text = route_text } };
     // #endregion plan-route
 
+    // #region pick-course
+    // Which course first? A typo still finds the course it's closest to (by edit distance), with a note.
+    const course_answer = askLine(in, out, "Which course first? (Compile Pass, Linker Loop, Route Planner) ") catch |e| switch (e) {
+        error.StreamTooLong => null,
+        else => return e,
+    };
+    var first_course: usize = 0;
+    if (course_answer) |typed| if (typed.len > 0) {
+        if (try closestCourse(gpa, &all_courses, typed)) |pick| {
+            first_course = pick.index;
+            if (pick.distance > 0) {
+                try err.print("note: no course \"{s}\"; did you mean \"{s}\"? racing it\n", .{ typed, all_courses[pick.index].name });
+            }
+        } else {
+            try err.print("note: no course like \"{s}\"; racing {s}\n", .{ typed, courses[0].name });
+        }
+        try err.flush();
+    };
+    // #endregion pick-course
+
     var race_no: usize = 0;
     while (true) : (race_no += 1) {
+        // #region loop-plan
         const plan = all_courses[(first_course + race_no) % all_courses.len];
+        // #endregion loop-plan
         try out.print("\nrace {d}: {s}\n", .{ race_no + 1, plan.name });
         try playRace(gpa, out, &standings, plan, you_index);
         try printStandings(gpa, out, &standings);
@@ -629,16 +633,18 @@ fn editDistance(gpa: std.mem.Allocator, a: []const u8, b: []const u8) !usize {
 /// A course found by name: which one, and how many edits away the name was (0: exactly).
 const CoursePick = struct { index: usize, distance: usize };
 
-/// The course whose name is closest to `typed`, if one is within 3 edits.
-fn closestCourse(gpa: std.mem.Allocator, typed: []const u8) !?CoursePick {
+// #region closest
+/// The course in `list` whose name is closest to `typed`, if one is within 3 edits.
+fn closestCourse(gpa: std.mem.Allocator, list: []const CoursePlan, typed: []const u8) !?CoursePick {
     if (typed.len == 0) return null;
     var best: ?CoursePick = null;
-    for (courses, 0..) |course, i| {
+    for (list, 0..) |course, i| {
         const distance = try editDistance(gpa, typed, course.name);
         if (distance <= 3 and (best == null or distance < best.?.distance)) best = .{ .index = i, .distance = distance };
     }
     return best;
 }
+// #endregion closest
 
 /// A trie: a tree of prefixes, one node per letter, so every word starting with the same letters shares
 /// those nodes. The nodes live in one list and point at each other by index: a node's first child, and
@@ -1983,15 +1989,15 @@ test "edit distances" {
 
 test "a course name with a typo finds the course" {
     const gpa = std.testing.allocator;
-    try std.testing.expectEqual(@as(?usize, 1), (try closestCourse(gpa, "linker lop")).?.index);
-    try std.testing.expectEqual(@as(?usize, 0), (try closestCourse(gpa, "Compile Pas")).?.index);
-    try std.testing.expectEqual(@as(usize, 0), (try closestCourse(gpa, "compile pass")).?.distance);
+    try std.testing.expectEqual(@as(?usize, 1), (try closestCourse(gpa, &courses, "linker lop")).?.index);
+    try std.testing.expectEqual(@as(?usize, 0), (try closestCourse(gpa, &courses, "Compile Pas")).?.index);
+    try std.testing.expectEqual(@as(usize, 0), (try closestCourse(gpa, &courses, "compile pass")).?.distance);
 }
 
 test "a course name too far from any course finds none" {
     const gpa = std.testing.allocator;
-    try std.testing.expect(try closestCourse(gpa, "Gravel Grinder") == null);
-    try std.testing.expect(try closestCourse(gpa, "") == null);
+    try std.testing.expect(try closestCourse(gpa, &courses, "Gravel Grinder") == null);
+    try std.testing.expect(try closestCourse(gpa, &courses, "") == null);
 }
 
 test "a trie finds the words it holds, ignoring case" {
