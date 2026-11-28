@@ -209,3 +209,18 @@ as values, iterators, and "which loop when" with the consequences of the wrong c
 verified example tied to the game, "Try it" tips, and the real errors. Then **In the game**: the step's new code
 from its regions with where it goes, and the whole file, visible. A collapsed diff at the very bottom is only for
 comparing (generated, region markers stripped). Model: src/pages/guide/basics/06-loops.md.
+
+## Decided (Felix, 2026-11-28): data structures and algorithms together
+
+Part 5 is "Data structures and algorithms": the planned structures plus prefix sums and sliding windows, searching
+text (with word wrap), edit distance (dynamic programming) and tries, ten steps (22–31). Merge sort by hand goes in
+the sorting page. UTF-8 and a hand-written lexer go to Part 9 (File I/O), bunching riders to Part 8, shuffling to
+Part 7. Topological sort was first sent to Part 10, then added to Part 5 as step 32 (Felix): a season of
+courses that unlock after others; Part 10 can point back to it for the build graph.
+
+## Decided (Felix, 2026-11-28): split the game into files at the start of Part 6
+
+By the end of Part 5, `src/main.zig` is over 2 000 lines, too long to read or copy from a page. Part 6 opens with a
+step that splits it into files (`@import` of your own files, `pub`, what goes where), and from then on each page's
+"In the game" shows the files as a code group, one tab per file. Part 10 builds on this (modules in build.zig)
+instead of introducing it.

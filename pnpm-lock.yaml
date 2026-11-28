@@ -176,8 +176,8 @@ importers:
   .:
     dependencies:
       '@clarusjs/theme-docs':
-        specifier: 0.5.0
-        version: 0.5.0(clarusjs@0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))
+        specifier: 0.6.0
+        version: 0.6.0(clarusjs@0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))
       '@fontsource-variable/geist':
         specifier: ^5.3.0
         version: 5.3.0
@@ -185,15 +185,15 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0
       clarusjs:
-        specifier: 0.16.0
-        version: 0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
+        specifier: 0.19.0
+        version: 0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
     devDependencies:
       '@clarusjs/content':
-        specifier: 0.5.0
-        version: 0.5.0(clarusjs@0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))
+        specifier: 0.8.0
+        version: 0.8.0(clarusjs@0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))
       '@clarusjs/prettier-plugin':
-        specifier: 0.2.1
-        version: 0.2.1(clarusjs@0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))(prettier@3.10.1)
+        specifier: 0.3.0
+        version: 0.3.0(clarusjs@0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))(prettier@3.10.1)
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.11
@@ -209,23 +209,27 @@ importers:
 
 packages:
 
-  '@clarusjs/content@0.5.0':
-    resolution: {integrity: sha512-VlCxlPCyJ0PTL3Omx4gAvRFKq28sOZn2OqqnYNHPBAF+ef4AuWC4rxIt3SNH6w3fsLOgwWYGNgXB5pc7lF5lZQ==}
+  '@clarusjs/content@0.8.0':
+    resolution: {integrity: sha512-kpnLiKGGpKY6jkf/34vNBpfa68gdufAIpipaYFFV00zgi8fdHClmU2dN7XRB9E/NxTpST0arN7arkGYa+gfd3Q==}
     engines: {node: ^22.12.0 || ^24.0.0 || >=26.0.0}
     peerDependencies:
-      clarusjs: ^0.16.0
+      clarusjs: ^0.19.0
 
-  '@clarusjs/prettier-plugin@0.2.1':
-    resolution: {integrity: sha512-KK0y/MQ+e6XEe/Ei5ckZElmyFN7HucTYq1FW3RZh7Yzip+X1Go9YM4b3WXIeEsgVm3kj6lj77dA9NmlPihKW+g==}
+  '@clarusjs/prettier-plugin@0.3.0':
+    resolution: {integrity: sha512-k+t9P0yWXWrJQssE47d+GLU0EgLiur0FEAh7Bo3MJDdNPSRH0yLkuOivBhiEjH6vLD+mNoPTIBPhhBEz5xNKcA==}
     peerDependencies:
-      clarusjs: '>=0.15.0'
+      clarusjs: '>=0.17.0'
       prettier: ^3.6.0
 
-  '@clarusjs/theme-docs@0.5.0':
-    resolution: {integrity: sha512-qX8kvj8UIpw+juNdUi3XXwhk5ey1LcqW6Hw5O5cvHioddFAugiHtRcj06vkHd4ocwDeF+7QNLIfiykE4xIFMaA==}
+  '@clarusjs/theme-docs@0.6.0':
+    resolution: {integrity: sha512-ur+h0svk2jeg1D8N7fzAddLDUcBnmKGuY8+drUJo2elACSVxIVuLCrEpWoey98ivC0scbafUNb8eVmXEwZeScg==}
     engines: {node: ^22.12.0 || ^24.0.0 || >=26.0.0}
     peerDependencies:
-      clarusjs: ^0.16.0
+      clarusjs: ^0.19.0
+      mermaid: '>=11'
+    peerDependenciesMeta:
+      mermaid:
+        optional: true
 
   '@fontsource-variable/geist-mono@5.3.0':
     resolution: {integrity: sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw==}
@@ -527,8 +531,8 @@ packages:
   character-entities-legacy@3.0.0:
     resolution: {integrity: sha512-RpPp0asT/6ufRm//AJVwpViZbGM/MkjQFxJccQRHmISF/22NBtsHqAWmL+/pmkPWoIUJdWyeVleTl1wydHATVQ==}
 
-  clarusjs@0.16.0:
-    resolution: {integrity: sha512-TFZ5nUi32OV2P/uTIL6cANdPGXq8VDIVplutNCw00KPDxtfUOgcseJSGkrVDam4V97qTXztoBH0KJEcG4HFk/w==}
+  clarusjs@0.19.0:
+    resolution: {integrity: sha512-C70GE/juZr/Ojtq5FY81CVXPHsZTFhE29lX2sktysXjUYr+JTBrulZVEx2tAaHTYw1avvzyVIsMMfIe53nJQhA==}
     engines: {node: ^22.12.0 || ^24.0.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
@@ -841,22 +845,22 @@ packages:
 
 snapshots:
 
-  '@clarusjs/content@0.5.0(clarusjs@0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))':
+  '@clarusjs/content@0.8.0(clarusjs@0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))':
     dependencies:
       '@shikijs/transformers': 4.6.0
-      clarusjs: 0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
+      clarusjs: 0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
       markdown-it: 15.0.3
       shiki: 4.6.0
       yaml: 2.9.1
 
-  '@clarusjs/prettier-plugin@0.2.1(clarusjs@0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))(prettier@3.10.1)':
+  '@clarusjs/prettier-plugin@0.3.0(clarusjs@0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))(prettier@3.10.1)':
     dependencies:
-      clarusjs: 0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
+      clarusjs: 0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
       prettier: 3.10.1
 
-  '@clarusjs/theme-docs@0.5.0(clarusjs@0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))':
+  '@clarusjs/theme-docs@0.6.0(clarusjs@0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)))':
     dependencies:
-      clarusjs: 0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
+      clarusjs: 0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1))
 
   '@fontsource-variable/geist-mono@5.3.0': {}
 
@@ -1047,7 +1051,7 @@ snapshots:
 
   character-entities-legacy@3.0.0: {}
 
-  clarusjs@0.16.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)):
+  clarusjs@0.19.0(vite@8.4.0(@types/node@26.6.11)(yaml@2.9.1)):
     dependencies:
       acorn: 8.19.0
       commander: 15.1.0

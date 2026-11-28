@@ -55,11 +55,13 @@ export const parts: Part[] = [
   },
   {
     slug: 'data-structures',
-    title: 'Data structures',
-    summary: 'Lists, maps, ring buffers, queues, sorting, searching and graphs, each where the race needs it.',
+    title: 'Data structures and algorithms',
+    summary: 'Ring buffers, queues, sorting, searching, prefix sums, bit sets, text search, edit distance, tries, graphs and topological sort, each where the race needs it.',
+    art: '/art/agama-data.svg',
     competencies: [
       'I can pick the right data structure for a job and say why',
       'I can sort and search, and measure what they cost',
+      'I can solve a problem with prefix sums, windows or dynamic programming',
       'I can find a route through a graph',
     ],
   },

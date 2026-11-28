@@ -1,0 +1,144 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -231,14 +231,25 @@ const Course = struct {
+     distance_m: f64,
+     segments: []const Segment = &.{}, // no segments: flat all the way
+ 
+-    /// The terrain at `position_m`: the last segment that starts at or before it.
++    /// The terrain at `position_m`: that of the segment it's on (flat before the first).
+     fn terrainAt(self: Course, position_m: f64) Terrain {
+-        var gradient_pct: f64 = 0;
+-        for (self.segments) |segment| {
+-            if (segment.start_m <= position_m) gradient_pct = segment.gradient_pct;
+-        }
+-        return Terrain.of(gradient_pct);
++        const i = self.segmentAt(position_m) orelse return .flat;
++        return Terrain.of(self.segments[i].gradient_pct);
++    }
++
++    /// Which segment `position_m` is on: the last one that starts at or before it, or `null` before the
++    /// first. The segments are in order of where they start, so a binary search finds it: `partitionPoint`
++    /// returns how many segments start at or before `position_m`.
++    fn segmentAt(self: Course, position_m: f64) ?usize {
++        const starts_before = std.sort.partitionPoint(Segment, self.segments, position_m, startsAtOrBefore);
++        return if (starts_before == 0) null else starts_before - 1;
+     }
++
++    fn startsAtOrBefore(position_m: f64, segment: Segment) bool {
++        return segment.start_m <= position_m;
++    }
+ };
+ 
+ const compile_pass: Course = .{
+@@ -385,7 +396,6 @@ const Feed = struct {
+     }
+ };
+ 
+ /// Sorting order for rider indexes: further along first; level riders in letter order (so the order
+ /// never flickers between riders on the same metre).
+ fn aheadOf(field: []const Rider, a: usize, b: usize) bool {
+@@ -408,7 +418,6 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
+         try w.print("\n", .{});
+     }
+ }
+ 
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+@@ -468,9 +477,7 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     // The race is one value: the loop steps it and prints what it says happened.
+     var race = try Race.fromField(course, field);
+     race.marks = try planMarks(race_gpa, course); // in the race's arena, gone with it
+     try race.trackOrder(race_gpa);
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
+@@ -518,9 +525,7 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+         try printTime(out, line.clock_s);
+         try out.print("  {s}\n", .{line.text()});
+     }
+     try printResults(out, &race);
+ 
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     if (race.winner) |w| {
+@@ -614,9 +619,7 @@ const Race = struct {
+     riders: []Rider, // the field: not the race's own memory, a view of the caller's
+     clock_s: u32 = 0,
+     marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
+     order: []usize = &.{}, // rider indexes, leader first (once `trackOrder` has made room for them)
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
+@@ -648,11 +651,9 @@ const Race = struct {
+             rider.position_m = advance_m(rider.position_m, speed_mps, dt_s);
+         }
+         self.clock_s += 1;
+         // Riders rarely swap places in one second, so the order is nearly sorted already: insertion sort
+         // only has to move the few who changed places.
+         std.sort.insertion(usize, self.order, self.riders, aheadOf);
+         const first = self.leader();
+         if (first != self.last_leader and n < events.len) {
+             events[n] = .{ .new_leader = self.riders[first].name };
+@@ -677,13 +678,11 @@ const Race = struct {
+         return events[0..n];
+     }
+ 
+     /// Starts keeping the race order: room for one index per rider, in letter order to begin with.
+     fn trackOrder(self: *Race, gpa: std.mem.Allocator) !void {
+         self.order = try gpa.alloc(usize, self.riders.len);
+         for (self.order, 0..) |*place, i| place.* = i;
+     }
+ 
+     /// Which rider is furthest along.
+     fn leader(self: *const Race) usize {
+@@ -1271,7 +1270,6 @@ test "a mark's label says what it is" {
+     try std.testing.expectEqualStrings("1 km to go", (Mark{ .at_m = 11500, .kind = .to_go }).label(&buf));
+ }
+ 
+ test "the race order is right after every step of a whole race" {
+     const gpa = std.testing.allocator;
+     const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
+@@ -1316,4 +1314,45 @@ test "the results list every rider once, leader first" {
+     try std.testing.expect(std.mem.startsWith(u8, w.buffered(), "results:\n   1  B "));
+     try std.testing.expectEqual(@as(usize, 1 + 8), std.mem.count(u8, w.buffered(), "\n"));
+ }
++
++/// The old way, one segment at a time: what binary search must agree with.
++fn terrainAtLinear(course: Course, position_m: f64) Terrain {
++    var gradient_pct: f64 = 0;
++    for (course.segments) |segment| {
++        if (segment.start_m <= position_m) gradient_pct = segment.gradient_pct;
++    }
++    return Terrain.of(gradient_pct);
++}
++
++test "binary search agrees with a linear scan at every boundary of Compile Pass" {
++    const gpa = std.testing.allocator;
++    const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
++    defer gpa.free(course.segments);
++    for ([_]f64{ -1, 0, 1, 3999.9, 4000, 4000.1, 5999.9, 6000, 7999.9, 8000, 12_499, 12_500, 20_000 }) |at_m| {
++        try std.testing.expectEqual(terrainAtLinear(course, at_m), course.terrainAt(at_m));
++    }
++}
++
++test "binary search agrees with a linear scan on a course of 1000 segments" {
++    var segments: [1000]Segment = undefined;
++    for (&segments, 0..) |*segment, i| {
++        const gradients = [_]f64{ 0, 6, -6, 2 };
++        segment.* = .{ .start_m = @floatFromInt(i * 10), .gradient_pct = gradients[i % 4] };
++    }
++    const course: Course = .{ .name = "Long", .distance_m = 10_000, .segments = &segments };
++    var at_m: f64 = -5;
++    while (at_m < 10_010) : (at_m += 2.5) {
++        try std.testing.expectEqual(terrainAtLinear(course, at_m), course.terrainAt(at_m));
++    }
++}
++
++test "the segment index: none before the start, the last past the end" {
++    const segments = [_]Segment{ .{ .start_m = 0, .gradient_pct = 0 }, .{ .start_m = 100, .gradient_pct = 5 } };
++    const course: Course = .{ .name = "Two", .distance_m = 200, .segments = &segments };
++    try std.testing.expectEqual(@as(?usize, null), course.segmentAt(-1));
++    try std.testing.expectEqual(@as(?usize, 0), course.segmentAt(99.9));
++    try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(100));
++    try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(500));
++}

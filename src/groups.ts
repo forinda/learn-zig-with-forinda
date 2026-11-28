@@ -20,7 +20,7 @@ const parts = [
   { title: 'Basics', icon: 'book' },
   { title: 'Structure', icon: 'layers' },
   { title: 'Memory', icon: 'box' },
-  { title: 'Data structures', icon: 'grid' },
+  { title: 'Data structures and algorithms', icon: 'grid' },
   { title: 'A terminal game', icon: 'terminal' },
   { title: 'Simulation', icon: 'chart' },
   { title: 'AI', icon: 'sparkles' },

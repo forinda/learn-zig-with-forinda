@@ -1,0 +1,301 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -75,7 +75,6 @@ pub fn main(init: std.process.Init) !void {
+         },
+         else => return e,
+     };
+     // A letter picks a rider; so does a name, or the start of one, found in a trie of the roster's names.
+     var names = try riderNames(gpa);
+     defer names.deinit(gpa);
+@@ -88,7 +87,6 @@ pub fn main(init: std.process.Init) !void {
+             try err.flush();
+         }
+     };
+     const you_index: usize = you - 'A';
+     // Positional arguments: {0s} is the first value, used twice; {1c} the second.
+     try out.print("Good luck, {0s}! {0s} rides as {1c} today.\n", .{ player, you });
+@@ -103,27 +101,49 @@ pub fn main(init: std.process.Init) !void {
+     var standings: Standings = .empty;
+     defer freeStandings(gpa, &standings);
+ 
++    // A third course, planned on the map: the shortest route from the start to the finish.
++    var map = try CourseMap.init(gpa, &map_roads);
++    defer map.deinit(gpa);
++    const route = (try shortestRoute(gpa, &map, .start, .finish)).?; // the map has a route: it's ours
++    defer gpa.free(route);
++    const fewest = (try fewestRoads(gpa, &map, .start, .finish)).?;
++    defer gpa.free(fewest);
++    const route_text = try routeCourseText(gpa, &map, route);
++    defer gpa.free(route_text);
++    try out.print("Route Planner: ", .{});
++    try printRoute(out, route);
++    try out.print(" (fewest roads: ", .{});
++    try printRoute(out, fewest);
++    try out.print(")\n", .{});
++    const all_courses = [_]CoursePlan{ courses[0], courses[1], .{ .name = "Route Planner", .text = route_text } };
++
+     // Which course first? A typo still finds the course it's closest to (by edit distance), with a note.
+-    const course_answer = askLine(in, out, "Which course first? (Compile Pass, Linker Loop) ") catch |e| switch (e) {
++    const course_answer = askLine(in, out, "Which course first? (Compile Pass, Linker Loop, Route Planner) ") catch |e| switch (e) {
+         error.StreamTooLong => null,
+         else => return e,
+     };
+     var first_course: usize = 0;
+     if (course_answer) |typed| if (typed.len > 0) {
+-        if (try closestCourse(gpa, typed)) |pick| {
++        if (try closestCourse(gpa, &all_courses, typed)) |pick| {
+             first_course = pick.index;
+             if (pick.distance > 0) {
+-                try err.print("note: no course \"{s}\"; did you mean \"{s}\"? racing it\n", .{ typed, courses[pick.index].name });
++                try err.print("note: no course \"{s}\"; did you mean \"{s}\"? racing it\n", .{ typed, all_courses[pick.index].name });
+             }
+         } else {
+             try err.print("note: no course like \"{s}\"; racing {s}\n", .{ typed, courses[0].name });
+         }
+         try err.flush();
+     };
+ 
+     var race_no: usize = 0;
+     while (true) : (race_no += 1) {
+-        const plan = courses[(first_course + race_no) % courses.len];
++        const plan = all_courses[(first_course + race_no) % all_courses.len];
+         try out.print("\nrace {d}: {s}\n", .{ race_no + 1, plan.name });
+         try playRace(gpa, out, &standings, plan, you_index);
+         try printStandings(gpa, out, &standings);
+@@ -613,18 +633,19 @@ fn editDistance(gpa: std.mem.Allocator, a: []const u8, b: []const u8) !usize {
+ /// A course found by name: which one, and how many edits away the name was (0: exactly).
+ const CoursePick = struct { index: usize, distance: usize };
+ 
+-/// The course whose name is closest to `typed`, if one is within 3 edits.
+-fn closestCourse(gpa: std.mem.Allocator, typed: []const u8) !?CoursePick {
++/// The course in `list` whose name is closest to `typed`, if one is within 3 edits.
++fn closestCourse(gpa: std.mem.Allocator, list: []const CoursePlan, typed: []const u8) !?CoursePick {
+     if (typed.len == 0) return null;
+     var best: ?CoursePick = null;
+-    for (courses, 0..) |course, i| {
++    for (list, 0..) |course, i| {
+         const distance = try editDistance(gpa, typed, course.name);
+         if (distance <= 3 and (best == null or distance < best.?.distance)) best = .{ .index = i, .distance = distance };
+     }
+     return best;
+ }
+ 
+ /// A trie: a tree of prefixes, one node per letter, so every word starting with the same letters shares
+ /// those nodes. The nodes live in one list and point at each other by index: a node's first child, and
+ /// its next sibling (the next child of the same parent). Letters are stored in lower case.
+@@ -710,7 +731,146 @@ fn pickRiderByName(names: *const Trie, typed: []const u8) ?u8 {
+     const matches = names.complete(typed, &found);
+     return if (matches.len == 1) matches[0] else null;
+ }
++
++/// The places on the course map. Island has no roads: there's no way there.
++const Place = enum(u8) { start, bridge, pass, valley, lake, finish, island };
++const place_count = std.enums.values(Place).len;
++
++/// A road on the map, as written down: between two places, its length, and its gradient ridden from
++/// `a` to `b` (the other way, it's the opposite).
++const MapRoad = struct { a: Place, b: Place, length_m: f64, gradient_pct: f64 };
++
++const map_roads = [_]MapRoad{
++    .{ .a = .start, .b = .bridge, .length_m = 3000, .gradient_pct = 0 },
++    .{ .a = .bridge, .b = .pass, .length_m = 2500, .gradient_pct = 6 },
++    .{ .a = .pass, .b = .finish, .length_m = 3000, .gradient_pct = -5 },
++    .{ .a = .bridge, .b = .valley, .length_m = 4000, .gradient_pct = 1 },
++    .{ .a = .valley, .b = .lake, .length_m = 3000, .gradient_pct = 0 },
++    .{ .a = .lake, .b = .finish, .length_m = 2500, .gradient_pct = 0 },
++    .{ .a = .start, .b = .lake, .length_m = 9000, .gradient_pct = 0 },
++};
++
++/// A road leaving a place: where it goes, how long, how steep.
++const Road = struct { to: Place, length_m: f64, gradient_pct: f64 };
++
++/// The map as a graph: for each place, the list of roads leaving it (adjacency lists).
++const CourseMap = struct {
++    roads: [place_count]std.ArrayList(Road),
++
++    fn init(gpa: std.mem.Allocator, map_roads_: []const MapRoad) !CourseMap {
++        var map: CourseMap = .{ .roads = @splat(.empty) };
++        errdefer map.deinit(gpa);
++        for (map_roads_) |r| { // each road, both ways
++            try map.roads[@backingInt(r.a)].append(gpa, .{ .to = r.b, .length_m = r.length_m, .gradient_pct = r.gradient_pct });
++            try map.roads[@backingInt(r.b)].append(gpa, .{ .to = r.a, .length_m = r.length_m, .gradient_pct = -r.gradient_pct });
++        }
++        return map;
++    }
++
++    fn deinit(self: *CourseMap, gpa: std.mem.Allocator) void {
++        for (&self.roads) |*list| list.deinit(gpa);
++    }
++
++    /// The road from `a` to `b` (the shortest, if there are several), if there is one.
++    fn road(self: *const CourseMap, a: Place, b: Place) ?Road {
++        var best: ?Road = null;
++        for (self.roads[@backingInt(a)].items) |r| {
++            if (r.to == b and (best == null or r.length_m < best.?.length_m)) best = r;
++        }
++        return best;
++    }
++};
++
++/// The route with the fewest roads: breadth-first search. A queue visits places in order of how many
++/// roads away they are, so the first time the search reaches `to`, it's by the fewest roads.
++fn fewestRoads(gpa: std.mem.Allocator, map: *const CourseMap, from: Place, to: Place) !?[]Place {
++    var previous: [place_count]?Place = @splat(null);
++    var seen: std.EnumSet(Place) = .empty;
++    var queue: std.Deque(Place) = .empty;
++    defer queue.deinit(gpa);
++    seen.insert(from);
++    try queue.pushBack(gpa, from);
++    while (queue.popFront()) |place| {
++        if (place == to) return try routeTo(gpa, &previous, from, to);
++        for (map.roads[@backingInt(place)].items) |r| {
++            if (seen.contains(r.to)) continue;
++            seen.insert(r.to);
++            previous[@backingInt(r.to)] = place;
++            try queue.pushBack(gpa, r.to);
++        }
++    }
++    return null; // the queue ran dry: `to` can't be reached
++}
++
++/// A place to visit, and how far it is from the start by the best route found so far.
++const Visit = struct {
++    place: Place,
++    distance_m: f64,
++
++    fn closer(_: void, a: Visit, b: Visit) std.math.Order {
++        return std.math.order(a.distance_m, b.distance_m);
++    }
++};
++
++/// The shortest route by distance: Dijkstra's algorithm. A priority queue always hands out the nearest
++/// place not yet settled; a place's distance is final the first time it comes out.
++fn shortestRoute(gpa: std.mem.Allocator, map: *const CourseMap, from: Place, to: Place) !?[]Place {
++    var distance_m: [place_count]f64 = @splat(std.math.inf(f64));
++    var previous: [place_count]?Place = @splat(null);
++    var queue: std.PriorityQueue(Visit, void, Visit.closer) = .empty;
++    defer queue.deinit(gpa);
++    distance_m[@backingInt(from)] = 0;
++    try queue.push(gpa, .{ .place = from, .distance_m = 0 });
++    while (queue.pop()) |visit| {
++        if (visit.distance_m > distance_m[@backingInt(visit.place)]) continue; // an old, longer way here
++        if (visit.place == to) break;
++        for (map.roads[@backingInt(visit.place)].items) |r| {
++            const via_m = visit.distance_m + r.length_m;
++            if (via_m < distance_m[@backingInt(r.to)]) {
++                distance_m[@backingInt(r.to)] = via_m;
++                previous[@backingInt(r.to)] = visit.place;
++                try queue.push(gpa, .{ .place = r.to, .distance_m = via_m });
++            }
++        }
++    }
++    if (std.math.isInf(distance_m[@backingInt(to)])) return null;
++    return try routeTo(gpa, &previous, from, to);
++}
++
++/// The route to `to`, read backwards from where each place was reached from, then turned round.
++fn routeTo(gpa: std.mem.Allocator, previous: []const ?Place, from: Place, to: Place) ![]Place {
++    var route: std.ArrayList(Place) = .empty;
++    errdefer route.deinit(gpa);
++    var at = to;
++    while (true) {
++        try route.append(gpa, at);
++        if (at == from) break;
++        at = previous[@backingInt(at)].?;
++    }
++    std.mem.reverse(Place, route.items);
++    return route.toOwnedSlice(gpa);
++}
++
++/// A route as a course, in the course text format: one line per road. The caller frees it.
++fn routeCourseText(gpa: std.mem.Allocator, map: *const CourseMap, route: []const Place) ![]u8 {
++    var text: std.Io.Writer.Allocating = .init(gpa);
++    errdefer text.deinit();
++    for (route[0 .. route.len - 1], route[1..]) |a, b| {
++        const r = map.road(a, b).?; // consecutive places on a route always have a road
++        switch (Terrain.of(r.gradient_pct)) {
++            .flat => try text.writer.print("flat {d:.0}\n", .{r.length_m}),
++            .climb => try text.writer.print("climb {d:.0} {d}\n", .{ r.length_m, r.gradient_pct }),
++            .descent => try text.writer.print("descent {d:.0} {d}\n", .{ r.length_m, r.gradient_pct }),
++        }
++    }
++    return text.toOwnedSlice();
++}
++
++fn printRoute(w: *std.Io.Writer, route: []const Place) !void {
++    for (route, 0..) |place, i| try w.print("{s}{s}", .{ if (i > 0) " > " else "", @tagName(place) });
++}
+ 
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+@@ -1829,18 +1989,17 @@ test "edit distances" {
+ 
+ test "a course name with a typo finds the course" {
+     const gpa = std.testing.allocator;
+-    try std.testing.expectEqual(@as(?usize, 1), (try closestCourse(gpa, "linker lop")).?.index);
+-    try std.testing.expectEqual(@as(?usize, 0), (try closestCourse(gpa, "Compile Pas")).?.index);
+-    try std.testing.expectEqual(@as(usize, 0), (try closestCourse(gpa, "compile pass")).?.distance);
++    try std.testing.expectEqual(@as(?usize, 1), (try closestCourse(gpa, &courses, "linker lop")).?.index);
++    try std.testing.expectEqual(@as(?usize, 0), (try closestCourse(gpa, &courses, "Compile Pas")).?.index);
++    try std.testing.expectEqual(@as(usize, 0), (try closestCourse(gpa, &courses, "compile pass")).?.distance);
+ }
+ 
+ test "a course name too far from any course finds none" {
+     const gpa = std.testing.allocator;
+-    try std.testing.expect(try closestCourse(gpa, "Gravel Grinder") == null);
+-    try std.testing.expect(try closestCourse(gpa, "") == null);
++    try std.testing.expect(try closestCourse(gpa, &courses, "Gravel Grinder") == null);
++    try std.testing.expect(try closestCourse(gpa, &courses, "") == null);
+ }
+ 
+ test "a trie finds the words it holds, ignoring case" {
+     const gpa = std.testing.allocator;
+     var trie: Trie = try .init(gpa);
+@@ -1874,4 +2033,48 @@ test "the rider question takes a letter or a name" {
+     try std.testing.expectEqual(@as(?u8, 'E'), pickRiderByName(&names, "Errdefer"));
+     try std.testing.expectEqual(@as(?u8, null), pickRiderByName(&names, "Zed"));
+ }
++
++test "fewest roads and shortest distance are different routes" {
++    const gpa = std.testing.allocator;
++    var map = try CourseMap.init(gpa, &map_roads);
++    defer map.deinit(gpa);
++    const fewest = (try fewestRoads(gpa, &map, .start, .finish)).?;
++    defer gpa.free(fewest);
++    const shortest = (try shortestRoute(gpa, &map, .start, .finish)).?;
++    defer gpa.free(shortest);
++    try std.testing.expectEqualSlices(Place, &.{ .start, .lake, .finish }, fewest);
++    try std.testing.expectEqualSlices(Place, &.{ .start, .bridge, .pass, .finish }, shortest);
++}
++
++test "a place no road reaches has no route" {
++    const gpa = std.testing.allocator;
++    var map = try CourseMap.init(gpa, &map_roads);
++    defer map.deinit(gpa);
++    try std.testing.expect(try fewestRoads(gpa, &map, .start, .island) == null);
++    try std.testing.expect(try shortestRoute(gpa, &map, .start, .island) == null);
++}
++
++test "the route from a place to itself is just that place" {
++    const gpa = std.testing.allocator;
++    var map = try CourseMap.init(gpa, &map_roads);
++    defer map.deinit(gpa);
++    const route = (try shortestRoute(gpa, &map, .lake, .lake)).?;
++    defer gpa.free(route);
++    try std.testing.expectEqualSlices(Place, &.{.lake}, route);
++}
++
++test "a planned route becomes a course that parses and races" {
++    const gpa = std.testing.allocator;
++    var map = try CourseMap.init(gpa, &map_roads);
++    defer map.deinit(gpa);
++    const route = (try shortestRoute(gpa, &map, .start, .finish)).?;
++    defer gpa.free(route);
++    const text = try routeCourseText(gpa, &map, route);
++    defer gpa.free(text);
++    const course = try parseCourse(gpa, "Route Planner", text);
++    defer gpa.free(course.segments);
++    try std.testing.expectEqual(@as(f64, 8500), course.distance_m);
++    try std.testing.expectEqual(Terrain.climb, course.terrainAt(4000));
++}

@@ -1,0 +1,196 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -101,7 +101,6 @@ pub fn main(init: std.process.Init) !void {
+     var standings: Standings = .empty;
+     defer freeStandings(gpa, &standings);
+ 
+     // A third course, planned on the map: the shortest route from the start to the finish.
+     var map = try CourseMap.init(gpa, &map_roads);
+     defer map.deinit(gpa);
+@@ -117,9 +116,20 @@ pub fn main(init: std.process.Init) !void {
+     try printRoute(out, fewest);
+     try out.print(")\n", .{});
+     const all_courses = [_]CoursePlan{ courses[0], courses[1], .{ .name = "Route Planner", .text = route_text } };
+ 
++    // The season: courses unlock after others, and a topological sort of those rules gives the order.
++    var course_names: [all_courses.len][]const u8 = undefined;
++    for (&course_names, all_courses) |*name, plan| name.* = plan.name;
++    const unlocks = try parseUnlocks(gpa, &course_names, unlocks_text);
++    defer gpa.free(unlocks);
++    const season = (try seasonOrder(gpa, course_names.len, unlocks)) orelse return error.CircularUnlocks;
++    defer gpa.free(season);
++    try out.print("season:", .{});
++    for (season, 0..) |course, i| try out.print("{s} {s}", .{ if (i > 0) " >" else "", course_names[course] });
++    try out.print("\n", .{});
++
+     // Which course first? A typo still finds the course it's closest to (by edit distance), with a note.
+     const course_answer = askLine(in, out, "Which course first? (Compile Pass, Linker Loop, Route Planner) ") catch |e| switch (e) {
+         error.StreamTooLong => null,
+@@ -137,13 +147,11 @@ pub fn main(init: std.process.Init) !void {
+         }
+         try err.flush();
+     };
+ 
+     var race_no: usize = 0;
+     while (true) : (race_no += 1) {
+-        const plan = all_courses[(first_course + race_no) % all_courses.len];
++        const start_at = std.mem.indexOfScalar(usize, season, first_course).?; // the season, from the course picked
++        const plan = all_courses[season[(start_at + race_no) % season.len]];
+         try out.print("\nrace {d}: {s}\n", .{ race_no + 1, plan.name });
+         try playRace(gpa, out, &standings, plan, you_index);
+         try printStandings(gpa, out, &standings);
+@@ -633,7 +641,6 @@ fn editDistance(gpa: std.mem.Allocator, a: []const u8, b: []const u8) !usize {
+ /// A course found by name: which one, and how many edits away the name was (0: exactly).
+ const CoursePick = struct { index: usize, distance: usize };
+ 
+ /// The course in `list` whose name is closest to `typed`, if one is within 3 edits.
+ fn closestCourse(gpa: std.mem.Allocator, list: []const CoursePlan, typed: []const u8) !?CoursePick {
+     if (typed.len == 0) return null;
+@@ -644,7 +651,6 @@ fn closestCourse(gpa: std.mem.Allocator, list: []const CoursePlan, typed: []cons
+     }
+     return best;
+ }
+ 
+ /// A trie: a tree of prefixes, one node per letter, so every word starting with the same letters shares
+ /// those nodes. The nodes live in one list and point at each other by index: a node's first child, and
+@@ -732,7 +738,6 @@ fn pickRiderByName(names: *const Trie, typed: []const u8) ?u8 {
+     return if (matches.len == 1) matches[0] else null;
+ }
+ 
+ /// The places on the course map. Island has no roads: there's no way there.
+ const Place = enum(u8) { start, bridge, pass, valley, lake, finish, island };
+ const place_count = std.enums.values(Place).len;
+@@ -870,7 +875,78 @@ fn routeCourseText(gpa: std.mem.Allocator, map: *const CourseMap, route: []const
+ fn printRoute(w: *std.Io.Writer, route: []const Place) !void {
+     for (route, 0..) |place, i| try w.print("{s}{s}", .{ if (i > 0) " > " else "", @tagName(place) });
+ }
++
++/// Which courses unlock after which, one rule a line: "Linker Loop after Compile Pass".
++const unlocks_text =
++    \\Linker Loop after Compile Pass
++    \\Route Planner after Linker Loop
++    \\Route Planner after Compile Pass
++;
++
++/// One rule: `course` comes after `after` (both indexes into the list of courses).
++const Unlock = struct { course: usize, after: usize };
++
++const UnlockError = error{ UnknownCourse, MissingAfter, OutOfMemory };
++
++/// Reads the rules in `text`, naming courses from `names` (case doesn't matter). The caller frees the rules.
++fn parseUnlocks(gpa: std.mem.Allocator, names: []const []const u8, text: []const u8) UnlockError![]Unlock {
++    var rules: std.ArrayList(Unlock) = .empty;
++    errdefer rules.deinit(gpa);
++    var lines = std.mem.tokenizeScalar(u8, text, '\n');
++    while (lines.next()) |raw| {
++        const line = std.mem.trim(u8, raw, " \t\r");
++        if (line.len == 0) continue;
++        const split = std.mem.indexOf(u8, line, " after ") orelse return error.MissingAfter;
++        const course = courseIndex(names, line[0..split]) orelse return error.UnknownCourse;
++        const after = courseIndex(names, line[split + " after ".len ..]) orelse return error.UnknownCourse;
++        try rules.append(gpa, .{ .course = course, .after = after });
++    }
++    return rules.toOwnedSlice(gpa);
++}
++
++fn courseIndex(names: []const []const u8, name: []const u8) ?usize {
++    for (names, 0..) |known, i| {
++        if (std.ascii.eqlIgnoreCase(known, std.mem.trim(u8, name, " "))) return i;
++    }
++    return null;
++}
++
++fn lowerFirst(_: void, a: usize, b: usize) std.math.Order {
++    return std.math.order(a, b);
++}
++
++/// An order for `count` courses in which every course comes after the ones it needs: a topological sort
++/// (Kahn's algorithm). Count how many courses each is waiting for; race any that wait for none; each one
++/// raced lets the courses waiting for it wait for one fewer. Ready courses go in list order, so the season
++/// is always the same. `null` if the rules go round in a circle (some courses never stop waiting).
++fn seasonOrder(gpa: std.mem.Allocator, count: usize, rules: []const Unlock) !?[]usize {
++    const waiting = try gpa.alloc(usize, count);
++    defer gpa.free(waiting);
++    @memset(waiting, 0);
++    for (rules) |rule| waiting[rule.course] += 1;
++
++    var ready: std.PriorityQueue(usize, void, lowerFirst) = .empty;
++    defer ready.deinit(gpa);
++    for (waiting, 0..) |w, course| if (w == 0) try ready.push(gpa, course);
++
++    var order: std.ArrayList(usize) = .empty;
++    errdefer order.deinit(gpa);
++    while (ready.pop()) |course| {
++        try order.append(gpa, course);
++        for (rules) |rule| {
++            if (rule.after != course) continue;
++            waiting[rule.course] -= 1;
++            if (waiting[rule.course] == 0) try ready.push(gpa, rule.course);
++        }
++    }
++    if (order.items.len < count) { // some courses never became ready: a circle
++        order.deinit(gpa);
++        return null;
++    }
++    return try order.toOwnedSlice(gpa);
++}
+ 
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+@@ -2034,7 +2110,6 @@ test "the rider question takes a letter or a name" {
+     try std.testing.expectEqual(@as(?u8, null), pickRiderByName(&names, "Zed"));
+ }
+ 
+ test "fewest roads and shortest distance are different routes" {
+     const gpa = std.testing.allocator;
+     var map = try CourseMap.init(gpa, &map_roads);
+@@ -2077,4 +2152,50 @@ test "a planned route becomes a course that parses and races" {
+     try std.testing.expectEqual(@as(f64, 8500), course.distance_m);
+     try std.testing.expectEqual(Terrain.climb, course.terrainAt(4000));
+ }
++
++const test_courses = [_][]const u8{ "Compile Pass", "Linker Loop", "Route Planner" };
++
++test "the season races every course after the ones it needs" {
++    const gpa = std.testing.allocator;
++    const rules = try parseUnlocks(gpa, &test_courses, unlocks_text);
++    defer gpa.free(rules);
++    const order = (try seasonOrder(gpa, test_courses.len, rules)).?;
++    defer gpa.free(order);
++    try std.testing.expectEqualSlices(usize, &.{ 0, 1, 2 }, order);
++    for (rules) |rule| { // for every rule, the course it needs comes first
++        const course_at = std.mem.indexOfScalar(usize, order, rule.course).?;
++        const after_at = std.mem.indexOfScalar(usize, order, rule.after).?;
++        try std.testing.expect(after_at < course_at);
++    }
++}
++
++test "with no rules, the season keeps the list's order" {
++    const gpa = std.testing.allocator;
++    const order = (try seasonOrder(gpa, 3, &.{})).?;
++    defer gpa.free(order);
++    try std.testing.expectEqualSlices(usize, &.{ 0, 1, 2 }, order);
++}
++
++test "a rule can put a later course first" {
++    const gpa = std.testing.allocator;
++    const rules = try parseUnlocks(gpa, &test_courses, "Compile Pass after Route Planner");
++    defer gpa.free(rules);
++    const order = (try seasonOrder(gpa, test_courses.len, rules)).?;
++    defer gpa.free(order);
++    try std.testing.expectEqualSlices(usize, &.{ 1, 2, 0 }, order);
++}
++
++test "rules that go round in a circle have no season" {
++    const gpa = std.testing.allocator;
++    const rules = try parseUnlocks(gpa, &test_courses, "Linker Loop after Route Planner\nRoute Planner after Linker Loop");
++    defer gpa.free(rules);
++    try std.testing.expect(try seasonOrder(gpa, test_courses.len, rules) == null);
++}
++
++test "a rule naming no course is an error" {
++    const gpa = std.testing.allocator;
++    try std.testing.expectError(error.UnknownCourse, parseUnlocks(gpa, &test_courses, "Gravel Grinder after Compile Pass"));
++    try std.testing.expectError(error.MissingAfter, parseUnlocks(gpa, &test_courses, "Linker Loop"));
++}

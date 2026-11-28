@@ -1,0 +1,187 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -385,7 +385,31 @@ const Feed = struct {
+     }
+ };
+ 
++/// Sorting order for rider indexes: further along first; level riders in letter order (so the order
++/// never flickers between riders on the same metre).
++fn aheadOf(field: []const Rider, a: usize, b: usize) bool {
++    if (field[a].position_m != field[b].position_m) return field[a].position_m > field[b].position_m;
++    return a < b;
++}
++
++/// The results, in race order: the place, the rider, and the time for those who finished or the gap to
++/// the line for those who didn't.
++fn printResults(w: *std.Io.Writer, race: *const Race) !void {
++    try w.print("results:\n", .{});
++    for (race.order, 1..) |index, place| {
++        const rider = race.riders[index];
++        try w.print("{d:>4}  {c}  {s:<10}", .{ place, rider.name, rider.full_name });
++        if (rider.finished(race.course.distance_m)) {
++            try printTime(w, race.clock_s);
++        } else {
++            try w.print("+{d:.0} m", .{race.course.distance_m - rider.position_m});
++        }
++        try w.print("\n", .{});
++    }
++}
++
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+ 
+@@ -431,7 +455,6 @@ fn planMarks(gpa: std.mem.Allocator, course: Course) !MarkQueue {
+     if (course.distance_m > 1000) try marks.push(gpa, .{ .at_m = course.distance_m - 1000, .kind = .to_go });
+     return marks;
+ }
+ 
+ /// One race on `plan`'s course, printed to `out`, its winner added to `standings`.
+ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings, plan: CoursePlan, you_index: usize) !void {
+@@ -444,9 +467,10 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     const field = try loadField(race_gpa, roster_text); // fresh riders, all at the start
+     // The race is one value: the loop steps it and prints what it says happened.
+     var race = try Race.fromField(course, field);
+     race.marks = try planMarks(race_gpa, course); // in the race's arena, gone with it
++    try race.trackOrder(race_gpa);
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
+@@ -454,7 +478,6 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     var feed: Feed = .init(&feed_lines);
+     while (!race.done()) {
+         for (race.step(&events)) |event| switch (event) {
+             .mark => |mark| {
+                 var label_buf: [24]u8 = undefined;
+                 const label = mark.label(&label_buf);
+@@ -467,10 +490,13 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+                 }
+                 try out.print("{s} at ", .{label});
+                 try printTime(out, race.clock_s);
+-                try out.print(": leader is {c}\n", .{race.riders[race.leader()].name});
++                try out.print(": leader is {c}", .{race.riders[race.leader()].name});
++                if (race.order.len >= 3) {
++                    try out.print(", then {c}, {c}", .{ race.riders[race.order[1]].name, race.riders[race.order[2]].name });
++                }
++                try out.print("\n", .{});
+                 try out.print("  {s}\n", .{drawRoad(&road, race.riders, race.course.distance_m, you_index)});
+             },
+             .new_leader => |name| {
+                 try out.print("  {c} takes the lead\n", .{name});
+                 feed.push(race.clock_s, "{s} takes the lead", .{race.riderNamed(name).?.full_name});
+@@ -492,6 +518,9 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+         try printTime(out, line.clock_s);
+         try out.print("  {s}\n", .{line.text()});
+     }
++    try printResults(out, &race);
+ 
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     if (race.winner) |w| {
+@@ -574,9 +603,7 @@ fn number(word: ?[]const u8) ParseError!f64 {
+ /// Something that happened in the race. One value, one of several kinds, each with its own data:
+ /// a tagged union. A `switch` on it says what to do with each kind.
+ const Event = union(enum) {
+     mark: Mark, // the leader passed a mark on the course
+     new_leader: u8, // this rider took the lead
+     finished: u8, // this rider crossed the line
+ };
+@@ -586,9 +613,10 @@ const Race = struct {
+     course: Course,
+     riders: []Rider, // the field: not the race's own memory, a view of the caller's
+     clock_s: u32 = 0,
+     marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
++    order: []usize = &.{}, // rider indexes, leader first (once `trackOrder` has made room for them)
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
+@@ -620,20 +648,23 @@ const Race = struct {
+             rider.position_m = advance_m(rider.position_m, speed_mps, dt_s);
+         }
+         self.clock_s += 1;
++        // Riders rarely swap places in one second, so the order is nearly sorted already: insertion sort
++        // only has to move the few who changed places.
++        std.sort.insertion(usize, self.order, self.riders, aheadOf);
+         const first = self.leader();
+         if (first != self.last_leader and n < events.len) {
+             events[n] = .{ .new_leader = self.riders[first].name };
+             n += 1;
+             self.last_leader = first;
+         }
+         // Every mark the leader has reached, nearest first: the queue always hands out the smallest.
+         while (self.marks.peek()) |mark| {
+             if (mark.at_m > self.riders[first].position_m or n == events.len) break;
+             events[n] = .{ .mark = self.marks.pop().? };
+             n += 1;
+         }
+         for (self.riders) |rider| {
+             if (rider.last_m < self.course.distance_m and rider.finished(self.course.distance_m)) {
+                 if (self.winner == null) self.winner = rider.name; // the first across the line
+@@ -646,6 +677,14 @@ const Race = struct {
+         return events[0..n];
+     }
+ 
++    /// Starts keeping the race order: room for one index per rider, in letter order to begin with.
++    fn trackOrder(self: *Race, gpa: std.mem.Allocator) !void {
++        self.order = try gpa.alloc(usize, self.riders.len);
++        for (self.order, 0..) |*place, i| place.* = i;
++    }
++
+     /// Which rider is furthest along.
+     fn leader(self: *const Race) usize {
+         return leaderOf(self.riders);
+@@ -1182,7 +1221,6 @@ test "a line too long for the feed is cut, not overflowed" {
+     try std.testing.expectEqual(@as(usize, FeedLine.max_len), lines.next().?.text().len);
+ }
+ 
+ test "marks come out in distance order, whatever order they went in" {
+     const gpa = std.testing.allocator;
+     var marks: MarkQueue = .empty;
+@@ -1232,4 +1270,50 @@ test "a mark's label says what it is" {
+     try std.testing.expectEqualStrings("km 7", (Mark{ .at_m = 7000, .kind = .km }).label(&buf));
+     try std.testing.expectEqualStrings("1 km to go", (Mark{ .at_m = 11500, .kind = .to_go }).label(&buf));
+ }
++
++test "the race order is right after every step of a whole race" {
++    const gpa = std.testing.allocator;
++    const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
++    defer gpa.free(course.segments);
++    const field = try loadField(gpa, roster_text);
++    defer freeField(gpa, field);
++    var race = try Race.fromField(course, field);
++    try race.trackOrder(gpa);
++    defer gpa.free(race.order);
++    var expected: [8]usize = undefined;
++    var events: [16]Event = undefined;
++    while (!race.done()) {
++        _ = race.step(&events);
++        for (&expected, 0..) |*e, i| e.* = i;
++        std.mem.sort(usize, &expected, race.riders, aheadOf); // a fresh, full sort to compare with
++        try std.testing.expectEqualSlices(usize, &expected, race.order);
++    }
++}
++
++test "riders level on the road keep letter order" {
++    var field: [8]Rider = undefined;
++    var race = Race.init(&field, test_course, &.{ 10, 10, 12 }, &.{});
++    try race.trackOrder(std.testing.allocator);
++    defer std.testing.allocator.free(race.order);
++    var events: [16]Event = undefined;
++    _ = race.step(&events);
++    try std.testing.expectEqual(@as(usize, 2), race.order[0]); // C, at 12 m/s, leads
++    try std.testing.expectEqual(@as(usize, 0), race.order[1]); // then A and B, level, A first
++    try std.testing.expectEqual(@as(usize, 1), race.order[2]);
++}
++
++test "the results list every rider once, leader first" {
++    var field: [8]Rider = undefined;
++    var race = Race.init(&field, test_course, &.{ 10, 12, 9 }, &.{});
++    try race.trackOrder(std.testing.allocator);
++    defer std.testing.allocator.free(race.order);
++    var events: [16]Event = undefined;
++    while (!race.done()) _ = race.step(&events);
++    var buf: [1024]u8 = undefined;
++    var w: std.Io.Writer = .fixed(&buf);
++    try printResults(&w, &race);
++    try std.testing.expect(std.mem.startsWith(u8, w.buffered(), "results:\n   1  B "));
++    try std.testing.expectEqual(@as(usize, 1 + 8), std.mem.count(u8, w.buffered(), "\n"));
++}

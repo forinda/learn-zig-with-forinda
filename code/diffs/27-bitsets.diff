@@ -1,0 +1,162 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -231,6 +231,15 @@ const Course = struct {
+     distance_m: f64,
+     segments: []const Segment = &.{}, // no segments: flat all the way
+ 
++    /// Which kinds of terrain this course has: a set with one bit per kind of `Terrain`.
++    fn terrainKinds(self: Course) std.EnumSet(Terrain) {
++        var kinds: std.EnumSet(Terrain) = .empty;
++        for (self.segments) |segment| kinds.insert(Terrain.of(segment.gradient_pct));
++        return kinds;
++    }
++
+     /// The terrain at `position_m`: that of the segment it's on (flat before the first).
+     fn terrainAt(self: Course, position_m: f64) Terrain {
+         const i = self.segmentAt(position_m) orelse return .flat;
+@@ -408,7 +417,6 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
+     for (race.order, 1..) |index, place| {
+         const rider = race.riders[index];
+         try w.print("{d:>4}  {c}  {s:<10}", .{ place, rider.name, rider.full_name });
+         // The time or the gap, written into a cell first so the next column lines up whatever its width.
+         var cell_buf: [16]u8 = undefined;
+         var cell: std.Io.Writer = .fixed(&cell_buf);
+@@ -418,20 +426,16 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
+             try cell.print("+{d:.0} m", .{race.course.distance_m - rider.position_m});
+         }
+         try w.print("{s:<8}", .{cell.buffered()});
+         if (race.splits.len > 0) {
+             if (race.splits[index].best_s) |best_s| {
+                 try w.print("  fastest km ", .{});
+                 try printTime(w, best_s);
+             }
+         }
+         try w.print("\n", .{});
+     }
+ }
+ 
+ /// How much a course climbs, as prefix sums: the metres climbed from the start to where each segment
+ /// starts. The climbing between any two points is then a subtraction, however long the course.
+ const ClimbProfile = struct {
+@@ -466,9 +470,7 @@ const ClimbProfile = struct {
+         return self.to(to_m) - self.to(from_m);
+     }
+ };
+ 
+ /// Where a rider was at one second.
+ const Sample = struct { clock_s: u32, position_m: f64 };
+ 
+@@ -494,7 +496,6 @@ const Split = struct {
+         }
+     }
+ };
+ 
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+@@ -555,11 +556,15 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     var race = try Race.fromField(course, field);
+     race.marks = try planMarks(race_gpa, course); // in the race's arena, gone with it
+     try race.trackOrder(race_gpa);
+     try race.trackSplits(race_gpa);
++    try race.trackLeaders(race_gpa);
+     const profile = try ClimbProfile.init(race_gpa, course);
+-    try out.print("{d:.1} km, {d:.0} m of climbing\n", .{ course.distance_m / 1000, profile.between(0, course.distance_m) });
++    try out.print("{d:.1} km, {d:.0} m of climbing; terrain:", .{ course.distance_m / 1000, profile.between(0, course.distance_m) });
++    var kinds = course.terrainKinds().iterator();
++    while (kinds.next()) |kind| try out.print(" {s}", .{@tagName(kind)});
++    try out.print("\n", .{});
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
+@@ -608,6 +613,12 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+         try out.print("  {s}\n", .{line.text()});
+     }
+     try printResults(out, &race);
++    try out.print("led the race:", .{});
++    var leaders = race.led.iterator(.{}); // the set bits, lowest first: letter order
++    while (leaders.next()) |i| try out.print(" {s}", .{race.riders[i].full_name});
++    try out.print("\n", .{});
+ 
+     // An optional has to be unwrapped before it's used. `orelse` gives a value to use when there's none...
+     if (race.winner) |w| {
+@@ -702,9 +713,10 @@ const Race = struct {
+     clock_s: u32 = 0,
+     marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
+     order: []usize = &.{}, // rider indexes, leader first (once `trackOrder` has made room for them)
+     splits: []Split = &.{}, // each rider's fastest km so far (once `trackSplits` has made room)
++    led: std.DynamicBitSetUnmanaged = .{}, // one bit per rider: has it led? (once `trackLeaders` has made room)
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
+@@ -739,12 +751,13 @@ const Race = struct {
+         // Riders rarely swap places in one second, so the order is nearly sorted already: insertion sort
+         // only has to move the few who changed places.
+         std.sort.insertion(usize, self.order, self.riders, aheadOf);
+         if (self.splits.len > 0) {
+             for (self.splits, self.riders) |*split, rider| split.add(self.clock_s, rider.position_m);
+         }
+         const first = self.leader();
++        if (self.led.bit_length > 0) self.led.set(first); // setting a bit that's already set changes nothing
+         if (first != self.last_leader and n < events.len) {
+             events[n] = .{ .new_leader = self.riders[first].name };
+             n += 1;
+@@ -774,7 +787,6 @@ const Race = struct {
+         for (self.order, 0..) |*place, i| place.* = i;
+     }
+ 
+     /// Starts timing everyone's fastest km: a window of up to 256 seconds per rider (a rider slower than
+     /// 1000 m in 256 s, under 4 m/s, gets no fastest km).
+     fn trackSplits(self: *Race, gpa: std.mem.Allocator) !void {
+@@ -786,7 +798,13 @@ const Race = struct {
+             split.add(self.clock_s, rider.position_m); // where it starts
+         }
+     }
++
++    /// Starts remembering who has led: one bit per rider, all clear.
++    fn trackLeaders(self: *Race, gpa: std.mem.Allocator) !void {
++        self.led = try .initEmpty(gpa, self.riders.len);
++    }
+ 
+     /// Which rider is furthest along.
+     fn leader(self: *const Race) usize {
+@@ -1459,7 +1477,6 @@ test "the segment index: none before the start, the last past the end" {
+     try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(500));
+ }
+ 
+ test "metres climbed between two points, from the prefix sums" {
+     const gpa = std.testing.allocator;
+     const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
+@@ -1493,4 +1510,34 @@ test "no fastest kilometre until a kilometre has been ridden" {
+     for (1..90) |second| split.add(@intCast(second), @as(f64, @floatFromInt(second)) * 10);
+     try std.testing.expectEqual(@as(?u32, null), split.best_s);
+ }
++
++test "everyone who led at some point is in the set, once" {
++    const gpa = std.testing.allocator;
++    const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
++    defer gpa.free(course.segments);
++    const field = try loadField(gpa, roster_text);
++    defer freeField(gpa, field);
++    var race = try Race.fromField(course, field);
++    try race.trackLeaders(gpa);
++    defer race.led.deinit(gpa);
++    var events: [16]Event = undefined;
++    while (!race.done()) _ = race.step(&events);
++    try std.testing.expectEqual(@as(usize, 3), race.led.count()); // Buffer, Errdefer, Heap
++    try std.testing.expect(race.led.isSet(1));
++    try std.testing.expect(race.led.isSet(4));
++    try std.testing.expect(race.led.isSet(7));
++}
++
++test "a course's terrain kinds, as a set" {
++    const gpa = std.testing.allocator;
++    const pass = try parseCourse(gpa, "Compile Pass", compile_pass_text);
++    defer gpa.free(pass.segments);
++    const linker_loop = try parseCourse(gpa, "Linker Loop", linker_loop_text);
++    defer gpa.free(linker_loop.segments);
++    try std.testing.expectEqual(@as(usize, 3), pass.terrainKinds().count());
++    const kinds = linker_loop.terrainKinds();
++    try std.testing.expectEqual(@as(usize, 2), kinds.count());
++    try std.testing.expect(!kinds.contains(.descent));
++}

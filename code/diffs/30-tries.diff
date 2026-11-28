@@ -1,0 +1,191 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -67,7 +67,7 @@ pub fn main(init: std.process.Init) !void {
+     const player = if (typed_name) |n| (if (n.len > 0) n else "Player") else "Player";
+ 
+     // Which rider is the player? No answer (or one too long for the buffer) means rider A.
+-    const answer = askLine(in, out, "Which rider are you (A-H)? ") catch |e| switch (e) {
++    const answer = askLine(in, out, "Which rider are you (A-H, or a name)? ") catch |e| switch (e) {
+         error.StreamTooLong => blk: {
+             try err.print("note: that answer is too long for {d} bytes; you're rider A\n", .{in_buffer.len});
+             try err.flush();
+@@ -75,7 +75,20 @@ pub fn main(init: std.process.Init) !void {
+         },
+         else => return e,
+     };
+-    const you = pickRider(answer);
++    // A letter picks a rider; so does a name, or the start of one, found in a trie of the roster's names.
++    var names = try riderNames(gpa);
++    defer names.deinit(gpa);
++    var you = pickRider(answer);
++    if (answer) |typed| if (typed.len > 1) {
++        if (pickRiderByName(&names, typed)) |letter| {
++            you = letter;
++        } else {
++            try err.print("note: no one rider's name starts \"{s}\"; you're rider A\n", .{typed});
++            try err.flush();
++        }
++    };
+     const you_index: usize = you - 'A';
+     // Positional arguments: {0s} is the first value, used twice; {1c} the second.
+     try out.print("Good luck, {0s}! {0s} rides as {1c} today.\n", .{ player, you });
+@@ -90,7 +103,6 @@ pub fn main(init: std.process.Init) !void {
+     var standings: Standings = .empty;
+     defer freeStandings(gpa, &standings);
+ 
+     // Which course first? A typo still finds the course it's closest to (by edit distance), with a note.
+     const course_answer = askLine(in, out, "Which course first? (Compile Pass, Linker Loop) ") catch |e| switch (e) {
+         error.StreamTooLong => null,
+@@ -108,7 +120,6 @@ pub fn main(init: std.process.Init) !void {
+         }
+         try err.flush();
+     };
+ 
+     var race_no: usize = 0;
+     while (true) : (race_no += 1) {
+@@ -574,7 +585,6 @@ fn wrap(w: *std.Io.Writer, text: []const u8, width: usize) !void {
+     if (column > 0) try w.writeByte('\n');
+ }
+ 
+ /// How many single-letter edits (insert, delete, change) turn `a` into `b`, ignoring case: the
+ /// Levenshtein distance. Dynamic programming: the distance between the first i letters of `a` and the
+ /// first j of `b` comes from three smaller ones, so the table is filled a row at a time, and only the
+@@ -613,7 +623,94 @@ fn closestCourse(gpa: std.mem.Allocator, typed: []const u8) !?CoursePick {
+     }
+     return best;
+ }
++
++/// A trie: a tree of prefixes, one node per letter, so every word starting with the same letters shares
++/// those nodes. The nodes live in one list and point at each other by index: a node's first child, and
++/// its next sibling (the next child of the same parent). Letters are stored in lower case.
++const Trie = struct {
++    nodes: std.ArrayList(Node),
++
++    const Node = struct {
++        letter: u8,
++        first_child: ?u32 = null,
++        next_sibling: ?u32 = null,
++        value: ?u8 = null, // set where a word ends: what the word stands for (a rider's letter)
++    };
++
++    fn init(gpa: std.mem.Allocator) !Trie {
++        var trie: Trie = .{ .nodes = .empty };
++        try trie.nodes.append(gpa, .{ .letter = 0 }); // the root: the empty prefix
++        return trie;
++    }
++
++    fn deinit(self: *Trie, gpa: std.mem.Allocator) void {
++        self.nodes.deinit(gpa);
++    }
++
++    /// The child of `node` for `letter`, if there is one.
++    fn child(self: *const Trie, node: u32, letter: u8) ?u32 {
++        var next = self.nodes.items[node].first_child;
++        while (next) |i| : (next = self.nodes.items[i].next_sibling) {
++            if (self.nodes.items[i].letter == letter) return i;
++        }
++        return null;
++    }
++
++    fn insert(self: *Trie, gpa: std.mem.Allocator, word: []const u8, value: u8) !void {
++        var node: u32 = 0;
++        for (word) |raw| {
++            const letter = std.ascii.toLower(raw);
++            node = self.child(node, letter) orelse blk: {
++                const new: u32 = @intCast(self.nodes.items.len);
++                // the new node goes first among its siblings (appending may move the list: index, not pointer)
++                try self.nodes.append(gpa, .{ .letter = letter, .next_sibling = self.nodes.items[node].first_child });
++                self.nodes.items[node].first_child = new;
++                break :blk new;
++            };
++        }
++        self.nodes.items[node].value = value;
++    }
++
++    /// The values of every word that starts with `prefix`, written into `found` (as many as fit).
++    fn complete(self: *const Trie, prefix: []const u8, found: []u8) []u8 {
++        var node: u32 = 0;
++        for (prefix) |raw| node = self.child(node, std.ascii.toLower(raw)) orelse return found[0..0];
++        var n: usize = 0;
++        self.collect(node, found, &n);
++        return found[0..n];
++    }
++
++    /// Every value at or below `node`: a depth-first walk, by recursion.
++    fn collect(self: *const Trie, node: u32, found: []u8, n: *usize) void {
++        if (self.nodes.items[node].value) |value| {
++            if (n.* < found.len) {
++                found[n.*] = value;
++                n.* += 1;
++            }
++        }
++        var next = self.nodes.items[node].first_child;
++        while (next) |i| : (next = self.nodes.items[i].next_sibling) self.collect(i, found, n);
++    }
++};
++
++/// A trie of the roster's names, each standing for its rider's letter.
++fn riderNames(gpa: std.mem.Allocator) !Trie {
++    var trie: Trie = try .init(gpa);
++    errdefer trie.deinit(gpa);
++    const field = try loadField(gpa, roster_text);
++    defer freeField(gpa, field); // the trie copies the letters it needs, not the names
++    for (field) |rider| try trie.insert(gpa, rider.full_name, rider.name);
++    return trie;
++}
++
++/// The rider whose name starts with `typed`, if exactly one does.
++fn pickRiderByName(names: *const Trie, typed: []const u8) ?u8 {
++    var found: [2]u8 = undefined; // room for two: enough to tell "one" from "more than one"
++    const matches = names.complete(typed, &found);
++    return if (matches.len == 1) matches[0] else null;
++}
+ 
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+@@ -1720,7 +1817,6 @@ test "a word longer than the width gets a line of its own" {
+     try std.testing.expectEqualStrings("a\ncommentatorially\nlong\nword\n", w.buffered());
+ }
+ 
+ test "edit distances" {
+     const gpa = std.testing.allocator;
+     try std.testing.expectEqual(@as(usize, 3), try editDistance(gpa, "kitten", "sitting"));
+@@ -1743,4 +1839,39 @@ test "a course name too far from any course finds none" {
+     try std.testing.expect(try closestCourse(gpa, "Gravel Grinder") == null);
+     try std.testing.expect(try closestCourse(gpa, "") == null);
+ }
++
++test "a trie finds the words it holds, ignoring case" {
++    const gpa = std.testing.allocator;
++    var trie: Trie = try .init(gpa);
++    defer trie.deinit(gpa);
++    try trie.insert(gpa, "Heap", 'H');
++    try trie.insert(gpa, "Buffer", 'B');
++    var found: [8]u8 = undefined;
++    try std.testing.expectEqualSlices(u8, "H", trie.complete("hEaP", &found));
++    try std.testing.expectEqualSlices(u8, "B", trie.complete("buffer", &found));
++}
++
++test "a prefix completes to one, several, or no words" {
++    const gpa = std.testing.allocator;
++    var trie: Trie = try .init(gpa);
++    defer trie.deinit(gpa);
++    try trie.insert(gpa, "Gamma", 'G');
++    try trie.insert(gpa, "Garnet", 'R');
++    try trie.insert(gpa, "Heap", 'H');
++    var found: [8]u8 = undefined;
++    try std.testing.expectEqualSlices(u8, "H", trie.complete("He", &found));
++    try std.testing.expectEqual(@as(usize, 2), trie.complete("Ga", &found).len);
++    try std.testing.expectEqual(@as(usize, 0), trie.complete("Zed", &found).len);
++    try std.testing.expectEqual(@as(usize, 3), trie.complete("", &found).len); // every word
++}
++
++test "the rider question takes a letter or a name" {
++    const gpa = std.testing.allocator;
++    var names = try riderNames(gpa);
++    defer names.deinit(gpa);
++    try std.testing.expectEqual(@as(?u8, 'H'), pickRiderByName(&names, "he"));
++    try std.testing.expectEqual(@as(?u8, 'E'), pickRiderByName(&names, "Errdefer"));
++    try std.testing.expectEqual(@as(?u8, null), pickRiderByName(&names, "Zed"));
++}

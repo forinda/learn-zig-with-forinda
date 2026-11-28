@@ -1,0 +1,198 @@
+diff --git src/main.zig src/main.zig
+--- src/main.zig
++++ src/main.zig
+@@ -231,7 +231,6 @@ const Course = struct {
+     distance_m: f64,
+     segments: []const Segment = &.{}, // no segments: flat all the way
+ 
+     /// The terrain at `position_m`: that of the segment it's on (flat before the first).
+     fn terrainAt(self: Course, position_m: f64) Terrain {
+         const i = self.segmentAt(position_m) orelse return .flat;
+@@ -249,7 +248,6 @@ const Course = struct {
+     fn startsAtOrBefore(position_m: f64, segment: Segment) bool {
+         return segment.start_m <= position_m;
+     }
+ };
+ 
+ const compile_pass: Course = .{
+@@ -410,15 +408,94 @@ fn printResults(w: *std.Io.Writer, race: *const Race) !void {
+     for (race.order, 1..) |index, place| {
+         const rider = race.riders[index];
+         try w.print("{d:>4}  {c}  {s:<10}", .{ place, rider.name, rider.full_name });
++        // The time or the gap, written into a cell first so the next column lines up whatever its width.
++        var cell_buf: [16]u8 = undefined;
++        var cell: std.Io.Writer = .fixed(&cell_buf);
+         if (rider.finished(race.course.distance_m)) {
+-            try printTime(w, race.clock_s);
++            try printTime(&cell, race.clock_s);
+         } else {
+-            try w.print("+{d:.0} m", .{race.course.distance_m - rider.position_m});
++            try cell.print("+{d:.0} m", .{race.course.distance_m - rider.position_m});
+         }
++        try w.print("{s:<8}", .{cell.buffered()});
++        if (race.splits.len > 0) {
++            if (race.splits[index].best_s) |best_s| {
++                try w.print("  fastest km ", .{});
++                try printTime(w, best_s);
++            }
++        }
+         try w.print("\n", .{});
+     }
+ }
+ 
++/// How much a course climbs, as prefix sums: the metres climbed from the start to where each segment
++/// starts. The climbing between any two points is then a subtraction, however long the course.
++const ClimbProfile = struct {
++    course: Course,
++    climbed_m: []f64,
++
++    fn init(gpa: std.mem.Allocator, course: Course) !ClimbProfile {
++        const climbed_m = try gpa.alloc(f64, course.segments.len);
++        var total_m: f64 = 0;
++        for (course.segments, climbed_m, 0..) |segment, *sum_m, i| {
++            sum_m.* = total_m; // climbed before this segment starts
++            const end_m = if (i + 1 < course.segments.len) course.segments[i + 1].start_m else course.distance_m;
++            total_m += (end_m - segment.start_m) * @max(segment.gradient_pct, 0) / 100;
++        }
++        return .{ .course = course, .climbed_m = climbed_m };
++    }
++
++    fn deinit(self: ClimbProfile, gpa: std.mem.Allocator) void {
++        gpa.free(self.climbed_m);
++    }
++
++    /// Metres climbed from the start to `position_m`: the sum up to its segment, plus the part of it ridden.
++    fn to(self: ClimbProfile, position_m: f64) f64 {
++        const at_m = @min(position_m, self.course.distance_m);
++        const i = self.course.segmentAt(at_m) orelse return 0;
++        const segment = self.course.segments[i];
++        return self.climbed_m[i] + (at_m - segment.start_m) * @max(segment.gradient_pct, 0) / 100;
++    }
++
++    /// Metres climbed between two points.
++    fn between(self: ClimbProfile, from_m: f64, to_m: f64) f64 {
++        return self.to(to_m) - self.to(from_m);
++    }
++};
++
++/// Where a rider was at one second.
++const Sample = struct { clock_s: u32, position_m: f64 };
++
++/// A rider's fastest kilometre, found with a sliding window over its recent seconds: the newest second
++/// is the window's right end; the left end moves on while the window still covers a kilometre.
++const Split = struct {
++    window: std.Deque(Sample),
++    best_s: ?u32 = null,
++
++    fn init(self: *Split, buf: []Sample) void {
++        self.* = .{ .window = .initBuffer(buf) };
++    }
++
++    fn add(self: *Split, clock_s: u32, position_m: f64) void {
++        if (self.window.len == self.window.buffer.len) _ = self.window.popFront(); // no room: drop the oldest
++        self.window.pushBackAssumeCapacity(.{ .clock_s = clock_s, .position_m = position_m });
++        // Every oldest sample a full km behind the newest is a candidate; the last of them is the shortest.
++        while (self.window.front()) |oldest| {
++            if (position_m - oldest.position_m < 1000) break;
++            const took_s = clock_s - oldest.clock_s;
++            if (self.best_s == null or took_s < self.best_s.?) self.best_s = took_s;
++            _ = self.window.popFront();
++        }
++    }
++};
++
+ /// The kinds of mark on a course, in the order they're announced when two share a metre.
+ const MarkKind = enum { km, climb_start, climb_top, to_go };
+ 
+@@ -478,6 +555,11 @@ fn playRace(gpa: std.mem.Allocator, out: *std.Io.Writer, standings: *Standings,
+     var race = try Race.fromField(course, field);
+     race.marks = try planMarks(race_gpa, course); // in the race's arena, gone with it
+     try race.trackOrder(race_gpa);
++    try race.trackSplits(race_gpa);
++    const profile = try ClimbProfile.init(race_gpa, course);
++    try out.print("{d:.1} km, {d:.0} m of climbing\n", .{ course.distance_m / 1000, profile.between(0, course.distance_m) });
+     var road: [50]u8 = undefined; // the road as a line of text, 50 characters wide
+     var events: [16]Event = undefined;
+     // The feed remembers the race's last few moments: a ring buffer of `feed_size` lines, no allocation.
+@@ -620,6 +702,9 @@ const Race = struct {
+     clock_s: u32 = 0,
+     marks: MarkQueue = .empty, // the course's marks still ahead, nearest first
+     order: []usize = &.{}, // rider indexes, leader first (once `trackOrder` has made room for them)
++    splits: []Split = &.{}, // each rider's fastest km so far (once `trackSplits` has made room)
+     last_leader: usize = 0, // who led after the last step
+     winner: ?u8 = null, // nobody yet: an optional is a value or null
+ 
+@@ -654,6 +739,11 @@ const Race = struct {
+         // Riders rarely swap places in one second, so the order is nearly sorted already: insertion sort
+         // only has to move the few who changed places.
+         std.sort.insertion(usize, self.order, self.riders, aheadOf);
++        if (self.splits.len > 0) {
++            for (self.splits, self.riders) |*split, rider| split.add(self.clock_s, rider.position_m);
++        }
+         const first = self.leader();
+         if (first != self.last_leader and n < events.len) {
+             events[n] = .{ .new_leader = self.riders[first].name };
+@@ -684,6 +774,20 @@ const Race = struct {
+         for (self.order, 0..) |*place, i| place.* = i;
+     }
+ 
++    /// Starts timing everyone's fastest km: a window of up to 256 seconds per rider (a rider slower than
++    /// 1000 m in 256 s, under 4 m/s, gets no fastest km).
++    fn trackSplits(self: *Race, gpa: std.mem.Allocator) !void {
++        const samples = try gpa.alloc(Sample, self.riders.len * 256);
++        errdefer gpa.free(samples);
++        self.splits = try gpa.alloc(Split, self.riders.len);
++        for (self.splits, self.riders, 0..) |*split, rider, i| {
++            split.init(samples[i * 256 ..][0..256]);
++            split.add(self.clock_s, rider.position_m); // where it starts
++        }
++    }
++
+     /// Which rider is furthest along.
+     fn leader(self: *const Race) usize {
+         return leaderOf(self.riders);
+@@ -1315,7 +1419,6 @@ test "the results list every rider once, leader first" {
+     try std.testing.expectEqual(@as(usize, 1 + 8), std.mem.count(u8, w.buffered(), "\n"));
+ }
+ 
+ /// The old way, one segment at a time: what binary search must agree with.
+ fn terrainAtLinear(course: Course, position_m: f64) Terrain {
+     var gradient_pct: f64 = 0;
+@@ -1355,4 +1458,39 @@ test "the segment index: none before the start, the last past the end" {
+     try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(100));
+     try std.testing.expectEqual(@as(?usize, 1), course.segmentAt(500));
+ }
++
++test "metres climbed between two points, from the prefix sums" {
++    const gpa = std.testing.allocator;
++    const course = try parseCourse(gpa, "Compile Pass", compile_pass_text);
++    defer gpa.free(course.segments);
++    const profile = try ClimbProfile.init(gpa, course);
++    defer profile.deinit(gpa);
++    try std.testing.expectApproxEqAbs(@as(f64, 120), profile.between(0, 12_500), 1e-9); // 2 km at 6 %
++    try std.testing.expectApproxEqAbs(@as(f64, 60), profile.between(4500, 5500), 1e-9); // half the climb
++    try std.testing.expectApproxEqAbs(@as(f64, 120), profile.between(3000, 7000), 1e-9); // the climb, and more
++    try std.testing.expectApproxEqAbs(@as(f64, 0), profile.between(6500, 7000), 1e-9); // downhill climbs nothing
++    try std.testing.expectApproxEqAbs(@as(f64, 30), profile.between(5500, 9000), 1e-9); // the last half km of it
++}
++
++test "a rider's fastest kilometre, from a window over its seconds" {
++    var split: Split = undefined;
++    var samples: [256]Sample = undefined;
++    split.init(&samples);
++    // 10 m/s for 100 s, then 20 m/s for 100 s: the fastest km is at 20 m/s, 50 s.
++    var position_m: f64 = 0;
++    for (1..201) |second| {
++        position_m += if (second <= 100) 10 else 20;
++        split.add(@intCast(second), position_m);
++    }
++    try std.testing.expectEqual(@as(?u32, 50), split.best_s);
++}
++
++test "no fastest kilometre until a kilometre has been ridden" {
++    var split: Split = undefined;
++    var samples: [256]Sample = undefined;
++    split.init(&samples);
++    for (1..90) |second| split.add(@intCast(second), @as(f64, @floatFromInt(second)) * 10);
++    try std.testing.expectEqual(@as(?u32, null), split.best_s);
++}
