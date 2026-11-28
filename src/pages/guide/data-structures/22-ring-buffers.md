@@ -14,6 +14,8 @@ keep everything; an array that shifts every item along to make room would do a l
 moment. A **ring buffer** keeps the last N things in a fixed array, adds and drops in constant time, and never
 allocates.
 
+<img class="lesson-art" src="/art/agama-data.svg" alt="Agama, the course's lizard, pointing at a route map with the shortest route from start to finish marked in orange" width="400" height="300" />
+
 ## A fixed array that wraps around
 
 Keep an array, the index of the oldest item (`head`), and how many there are (`len`). The newest goes just after

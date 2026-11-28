@@ -57,6 +57,7 @@ export const parts: Part[] = [
     slug: 'data-structures',
     title: 'Data structures and algorithms',
     summary: 'Ring buffers, queues, sorting, searching, prefix sums, bit sets, text search, edit distance, tries and graphs, each where the race needs it.',
+    art: '/art/agama-data.svg',
     competencies: [
       'I can pick the right data structure for a job and say why',
       'I can sort and search, and measure what they cost',
