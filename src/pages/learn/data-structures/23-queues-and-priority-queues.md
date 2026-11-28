@@ -90,8 +90,8 @@ A priority queue's rule says less, equal or greater (`.lt`, `.eq`, `.gt`), not j
 
 Add a sprint line to a course: a new `MarkKind`, `.sprint`, announced as "intermediate sprint", at a distance from
 a new course line `sprint 6000` (`parseCourse` records it; `planMarks` pushes it). Test first: a course with
-`sprint 6000` gets a sprint mark at 6000 m, it comes out between km 5 and km 6, and at exactly 6000 m it comes after
-"km 6" (your tie-breaker: kind order). Let the compiler show you each `switch` on `MarkKind` to update.
+`sprint 6000` gets a sprint mark at 6000 m, and it comes out just after "km 6" (they share the metre; the
+tie-breaker, kind order, puts kilometres first). Let the compiler show you each `switch` on `MarkKind` to update.
 
 ```sh
 zig build test --summary all
